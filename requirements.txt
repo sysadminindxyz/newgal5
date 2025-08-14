@@ -67,4 +67,3 @@ tzdata==2025.2
 urllib3==2.5.0
 watchdog==6.0.0
 wcwidth==0.2.13
-git+https://$GH_TOKEN@github.com/sysadminindxyz/central-pipeline@v0.1.0#subdirectory=indxyz_utils
