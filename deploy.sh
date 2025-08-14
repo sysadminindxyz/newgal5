@@ -12,7 +12,7 @@ python -m pip install --upgrade pip
 # Token optional if using SSH in requirements.txt
 if [[ -n "${GH_TOKEN:-}" ]]; then
   pip install -r requirements.txt || \
-  pip install "git+https://${GH_TOKEN}@github.com/sysadminindxzy/central-pipeline@$SHA#subdirectory=indxyz_utils"
+  pip install "git+https://${GH_TOKEN}@github.com/sysadminindxyz/central-pipeline@$SHA#subdirectory=indxyz_utils"
 else
   pip install -r requirements.txt
 fi
