@@ -16,4 +16,4 @@ else
   pip install -r requirements.txt
 fi
 
-exec python -m streamlit run test4.py
+exec python -m streamlit run test5.py
