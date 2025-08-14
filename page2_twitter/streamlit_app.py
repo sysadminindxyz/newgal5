@@ -18,19 +18,46 @@ def main():
       """
   )
 
-  # Load once
-  DB = json.loads(Path("data/tweets.json").read_text())
-  #print(DB)
-  # Include widgets.js once at the end (omit_script=True in oEmbed above)
-  WIDGETS_JS = '<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>'
+def main():
+    st.set_page_config(layout="wide")
 
-  for item in DB:
-      html(item, height=700, scrolling=False)
-      #st_html(item, max_width=700, scrolling=False, margin="auto")
+    st.write(
+        """
+        Trending Social Posts &nbsp;
+        =====================
 
-  # Add the script once so embeds hydrate
-  #st.markdown(WIDGETS_JS, unsafe_allow_html=True)
+        """
+    )
 
+    # ✅ Embedded tweet (clean, working version)
+
+    tweet_embed01 = """
+    <blockquote class="twitter-tweet" data-theme="dark">
+    <p lang="en" dir="ltr">This is exact same man one year apart. 
+    <br><br>Before AND After. <br><br>Ozempic is a miracle. 
+    <a href="https://twitter.com/search?q=%24NVO&amp;src=ctag&amp;ref_src=twsrc%5Etfw">$NVO</a> 
+    <a href="https://t.co/7lzFhlQcb0">pic.twitter.com/7lzFhlQcb0</a></p>&mdash; tic toc (@TicTocTick) <a href="https://twitter.com/TicTocTick/status/1946911910311371042?ref_src=twsrc%5Etfw">July 20, 2025</a></blockquote>
+    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    """
+
+    tweet_embed = """
+    <blockquote class="twitter-tweet" data-theme="dark">
+      <p lang="en" dir="ltr">
+        Mike Pompeo looks like a totally different person now.<br><br>Ozempic is wild
+        <a href="https://t.co/9PIgngr7UR">pic.twitter.com/9PIgngr7UR</a>
+      </p>
+      &mdash; Ken Theroux (@KenTheroux)
+      <a href="https://twitter.com/KenTheroux/status/1947154448637419826?ref_src=twsrc%5Etfw">
+        July 21, 2025
+      </a>
+    </blockquote>
+    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    """
+    html(tweet_embed01, height=700, scrolling=False)
+
+
+
+    html(tweet_embed, height=600, scrolling=False)
 
 
 if __name__ == "__main__":

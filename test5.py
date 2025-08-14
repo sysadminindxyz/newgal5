@@ -40,14 +40,13 @@ central_pipeline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 
 sys.path.append(central_pipeline_path)
 from indxyz_utils.render_title_new import render_title
 
-
 def main():
     st.set_page_config( layout="wide")
 
-    render_title(""""Gatesway" \n\n to Mercury Real-Time Intelligence Dashboard"""
+    render_title(""""Snacklash"\n\n Real-Time Intelligence Dashboard"""
                  )
 
-# Tight HR
+    # Tight HR
     st.markdown('<hr style="margin:0px 0;">', unsafe_allow_html=True)
     #st.markdown("---")
 
@@ -94,8 +93,8 @@ def main():
     """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    st.set_page_config(page_title="Gateway"
-                       , page_icon="robot"
+    st.set_page_config(page_title="Snacklash"
+                       , page_icon="exclamation-triangle"
                        , layout="wide"
                        )
     main()

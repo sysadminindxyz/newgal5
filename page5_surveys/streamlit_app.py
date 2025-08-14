@@ -1,101 +1,92 @@
 import streamlit as st
-from streamlit.components.v1 import html as html
-import base64
-import os
-import sys
-central_pipeline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..', 'central-pipeline'))
-sys.path.append(central_pipeline_path)
-from indxyz_utils.widgetbox import main as wb
-from indxyz_utils.tweet_to_image_tools import get_base64_image
+from streamlit_elements import elements, mui
 
 def main():
-    # pages/External_Tool.py
 
-    st.set_page_config(layout="wide")
-    st.title("Public Opinion")
-    #PUBLIC OPINION
-    #html_public_opinion = [wb(" Public Opinion", "chat-text")]
-    yougov_img=get_base64_image(f"images/yougov.png")
-    # st.image(
-    #     f"data:image/png;base64,{yougov_img}",
-    #     use_container_width=True
-    # )
+    with elements("newframe"):
 
-    url = "https://today.yougov.com/topics/economy/explore/public_figure/Bill_Gates"
+        # You can create a draggable and resizable dashboard using
+        # any element available in Streamlit Elements.
 
-    st.markdown(
-        f"""
-        <center>
-        <a href="{url}" target="_blank" rel="noopener noreferrer">
-        <img src="data:image/png;base64,{yougov_img}"
-            style="max-width:100%; height:auto; display:block; cursor:pointer;">
-        </a>
-        </center>
-        """,
-        unsafe_allow_html=True,
-    )
+        from streamlit_elements import dashboard
 
-    # html_public_opinion=[]
-    # html_public_opinion.append(f"""
-    #     <div style='margin-bottom: 20px;'>
-    #         <img src="data:image/png;base64,{yougov_img}" 
-    #             style="max-width: 100%; height: auto; display: block;">
-    #         <br>
-    #         <a class="source-link" href="https://today.yougov.com/topics/economy/explore/public_figure/Bill_Gates" target="_blank">link</a>
-    #     </div>
-    #     <script>
-    #         function resize() {{
-    #         const img = document.getElementById('yg');
-    #         if (!img) return;
-    #         const h = Math.ceil(img.getBoundingClientRect().height) + 16;
-    #         window.parent.postMessage({{
-    #             isStreamlitMessage: true,
-    #             type: "streamlit:setFrameHeight",
-    #             height: h
-    #         }}, "*");
-    #         }}
-    #         const img = document.getElementById('yg');
-    #         img.addEventListener('load', resize);
-    #         new ResizeObserver(resize).observe(img);
-    #         window.addEventListener('resize', resize);
-    #         resize();
-    #     </script>
-    #     """)
-    
-    # # Close the inner scrollable container and outer box
-    # #html_public_opinion.append("</div></div>")
-    # opinion_widget_html="".join(html_public_opinion)
-    # html(opinion_widget_html, scrolling=False)
+        # First, build a default layout for every element you want to include in your dashboard
+        import base64
 
-    # url = "https://today.yougov.com/topics/economy/explore/public_figure/Bill_Gates"
+        def encode_image_to_base64(image_path):
+            with open(image_path, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode()
+            return f"data:image/jpeg;base64,{encoded}"
 
-    # html(
-    #     f"""
-    #     <style>
-    #     html, body {{ margin:0; padding:0; }}
-    #     .wrap {{ width:100%; height:100vh; }}
-    #     .wrap > iframe {{ width:100%; height:100%; border:0; }}
-    #     </style>
-    #     <div class="wrap">
-    #     <iframe
-    #         src="{url}"
-    #         allow="clipboard-write; fullscreen; geolocation *; microphone *; camera *"
-    #         referrerpolicy="no-referrer-when-downgrade">
-    #     </iframe>
-    #     </div>
-    #     <script>
-    #     function setHeight() {{
-    #         const h = Math.max(window.innerHeight - 16, 600);
-    #         window.parent.postMessage({{ isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: h }}, "*");
-    #     }}
-    #     window.addEventListener("load", setHeight);
-    #     window.addEventListener("resize", setHeight);
-    #     </script>
-    #     """,
-    #     height=600,  # initial; JS bumps it to fill the viewport
-    # )
+        image_src1 = encode_image_to_base64("images/social/pew_01.png")
+        image_src2 = encode_image_to_base64("images/social/pew_02.png")
+        image_src3 = encode_image_to_base64("images/social/pew_03.png")
+        image_src4 = encode_image_to_base64("images/social/pew_04.png")
+        image_src5 = encode_image_to_base64("images/social/pew_05.png")
+
+
+        layout = [
+            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+            dashboard.Item("first_item", 0, 0, 3, 2),
+            dashboard.Item("second_item", 3, 0, 3, 2), #isDraggable=False, moved=False),
+            dashboard.Item("third_item", 6, 0, 3, 2), #isResizable=False),
+            dashboard.Item("fourth_item", 0, 2, 3, 2), #isResizable=False),
+            dashboard.Item("fifth_item", 3, 2, 3, 2), #isResizable=False),
+        ]
+
+        def handle_layout_change(updated_layout):
+            # You can save the layout in a file, or do anything you want with it.
+            # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
+            print(updated_layout)
+
+        with dashboard.Grid(layout, onLayoutChange=handle_layout_change):
+            # 🖼️ Image card
+            mui.Card(
+                key="first_item",                # ✅ Link to dashboard tile
+                children=mui.CardMedia(
+                    component="img",
+                    image=image_src1,          # ✅ This is the correct prop for CardMedia
+                    alt="My image"
+                )
+            )
+            mui.Card(
+                key="second_item",                # ✅ Link to dashboard tile
+                children=mui.CardMedia(
+                    component="img",
+                    image=image_src2,          # ✅ This is the correct prop for CardMedia
+                    alt="My image"
+                )
+            )
+            mui.Card(
+                key="third_item",                # ✅ Link to dashboard tile
+                children=mui.CardMedia(
+                    component="img",
+                    image=image_src3,          # ✅ This is the correct prop for CardMedia
+                    alt="My image"
+                )
+            )            
+            mui.Card(
+                key="fourth_item",                # ✅ Link to dashboard tile
+                children=mui.CardMedia(
+                    component="img",
+                    image=image_src4,          # ✅ This is the correct prop for CardMedia
+                    alt="My image"
+                )
+            )
+            mui.Card(
+                key="fifth_item",                # ✅ Link to dashboard tile
+                children=mui.CardMedia(
+                    component="img",
+                    image=image_src5,          # ✅ This is the correct prop for CardMedia
+                    alt="My image"
+                )
+            )
+
+    tmp="https://www.pewresearch.org/science/2024/02/26/how-americans-view-weight-loss-drugs-and-their-potential-impact-on-obesity-in-the-u-s/"
+    #st.html(tmp, height=370, scrolling=False)
+    st.markdown("[LINK TO FULL REPORT](%s)" % tmp)
 
 
 if __name__ == "__main__":
-    st.set_page_config(page_title="Gateway", page_icon="robot", layout="wide")
+    st.set_page_config(page_title="Snacklash", page_icon="🥨", layout="wide")
     main()

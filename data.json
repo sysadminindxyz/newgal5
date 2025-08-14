@@ -1,32 +1,122 @@
 [
     {
-        "title": "The only person whose net worth has dropped anywhere near as much as Elon Musk’s is Bill Gates’—and he’s giving it away",
-        "summary": "Elon Musk’s net worth has dropped by $75 billion in 2025, down to $357 billion, amid Tesla’s declining sales, political fallout with President Trump, and widespread vandalism targeting the brand. While other billionaires like Larry Ellison and Mark Zuckerberg saw major gains from the AI rally, Musk’s fortune suffered because of an 18% fall in Tesla stock and questions over its fundamentals. The only other billionaire to suffer a comparable reduction was...",
-        "source": "Fortune",
-        "Link": "https://fortune.com/2025/08/05/elon-musk-net-worth-tesla-stock-bill-gates-philanthropy/"
+        "x": "6",
+        "y": "14",
+        "id": "Tweets"
     },
     {
-        "title": "Bill Gates goes all in on women’s health",
-        "summary": "Bill Gates has committed to giving away nearly all of his wealth over the next 20 years through his namesake foundation. This week, he announced …",
-        "source": "Stat",
-        "Link": "https://www.statnews.com/2025/08/06/bill-gates-womens-health-status-report-episode-9/"
+        "x": "7",
+        "y": "13",
+        "id": "Tweets"
     },
     {
-        "title": "Gates Foundation commits $2.5 billion to 'ignored' women's health",
-        "summary": "The Gates Foundation will spend $2.5 billion by 2030 on women’s health, it said on Monday, with founder Bill Gates saying the area, including conditions from preeclampsia to menopause…",
-        "source": "NBC News",
-        "Link": "https://www.nbcnews.com/health/womens-health/gates-foundation-commits-25-billion-ignored-womens-health-rcna223003"
+        "x": "8",
+        "y": "12",
+        "id": "Tweets"
     },
     {
-        "title": "Kyrie Irving Says It's 'Weird' Bill Gates Owns So Much Land and Water — 'He Owns the Majority of the Water in the U.S....I Think That's Weird'",
-        "summary": "Kyrie Irving is once again making headlines, but this time it's not for anything basketball-related. The injured Dallas Mavericks All-Star took to Twitch—yes, the livestreaming platform mostly known for gamers—to share some of his thoughts on, of all things, farmland and Bill Gates...",
-        "source": "Yahoo Finance",
-        "Link": "https://finance.yahoo.com/news/kyrie-irving-says-weird-bill-080237163.html"
+        "x": "9",
+        "y": "19",
+        "id": "Tweets"
     },
     {
-        "title": "Bill Gates warns Gen Z:  AI will wipe out entry-level jobs, don't rely on tech alone",
-        "summary": "As artificial intelligence rapidly reshapes the workforce, , Microsoft cofounder Bill Gates has issued a stark warning to Gen Z…",
-        "source": "Times of India",
-        "Link": "https://timesofindia.indiatimes.com/technology/tech-news/bill-gates-warns-gen-z-ai-will-wipe-out-entry-level-jobs-dont-rely-on-tech-alone/articleshow/123140100.cms"
+        "x": "10",
+        "y": "18",
+        "id": "Tweets"
+    },
+    {
+        "x": "11",
+        "y": "15",
+        "id": "Tweets"
+    },
+    {
+        "x": "12",
+        "y": "14",
+        "id": "Tweets"
+    },
+    {
+        "x": "13",
+        "y": "12",
+        "id": "Tweets"
+    },
+    {
+        "x": "14",
+        "y": "26",
+        "id": "Tweets"
+    },
+    {
+        "x": "15",
+        "y": "23",
+        "id": "Tweets"
+    },
+    {
+        "x": "16",
+        "y": "14",
+        "id": "Tweets"
+    },
+    {
+        "x": "17",
+        "y": "17",
+        "id": "Tweets"
+    },
+    {
+        "x": "6",
+        "y": "323",
+        "id": "Re-tweets"
+    },
+    {
+        "x": "7",
+        "y": "54",
+        "id": "Re-tweets"
+    },
+    {
+        "x": "8",
+        "y": "1",
+        "id": "Re-tweets"
+    },
+    {
+        "x": "9",
+        "y": "3",
+        "id": "Re-tweets"
+    },
+    {
+        "x": "10",
+        "y": "1",
+        "id": "Re-tweets"
+    },
+    {
+        "x": "11",
+        "y": "200",
+        "id": "Re-tweets"
+    },
+    {
+        "x": "12",
+        "y": "4",
+        "id": "Re-tweets"
+    },
+    {
+        "x": "13",
+        "y": "123",
+        "id": "Re-tweets"
+    },
+    {
+        "x": "14",
+        "y": "652",
+        "id": "Re-tweets"
+    },
+    {
+        "x": "15",
+        "y": "124",
+        "id": "Re-tweets"
+    },
+    {
+        "x": "16",
+        "y": "3",
+        "id": "Re-tweets"
+    },
+    {
+        "x": "17",
+        "y": "2",
+        "id": "Re-tweets"
     }
 ]
