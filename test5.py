@@ -38,7 +38,7 @@ from utils.page import page_group
 
 # central_pipeline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..', 'central-pipeline'))
 # sys.path.append(central_pipeline_path)
-from page1.indxyz_utils.indxyz_utils.render_title_new import render_title
+from indxyz_utils.indxyz_utils.render_title_new import render_title
 
 def main():
     st.set_page_config( layout="wide")
