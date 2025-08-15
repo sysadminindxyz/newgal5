@@ -6,9 +6,9 @@ import os
 import re
 import sys
 import json
-from indxyz_utils.widgetbox_ticker import main as wb
-from indxyz_utils.tweet_to_image_tools import get_base64_image
-from indxyz_utils.tweet_to_image_tools import extract_tweet_id
+from .indxyz_utils.indxyz_utils.widgetbox_ticker import main as wb
+from .indxyz_utils.indxyz_utils.tweet_to_image_tools import get_base64_image
+from .indxyz_utils.indxyz_utils.tweet_to_image_tools import extract_tweet_id
 
 
 def main():

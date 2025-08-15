@@ -6,7 +6,7 @@ import os
 import re
 import sys
 import json
-from indxyz_utils.widgetbox import main as wb
+from .indxyz_utils.indxyz_utils.widgetbox import main as wb
 
 def get_issues(source_type, time_selection):
     return [  
@@ -107,7 +107,7 @@ def main():
             <div style="
                 height: 250px;
                 overflow-y: auto;
-                padding: 0px 15px;
+                padding: 10px 15px;
                 background-color: #f9f9f9;
                 font-family: Arial, sans-serif; /* ← Added font family */
 

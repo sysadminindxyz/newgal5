@@ -7,7 +7,7 @@ import json
 # sys.path.append(central_pipeline_path)
 
 #from indxyz_utils.widgetbox import main as wb
-from indxyz_utils.widgetbox_ticker import main as wb 
+from .indxyz_utils.indxyz_utils.widgetbox_ticker import main as wb 
 
 
 # === Mock Function to Return News (no filtering yet) ===

@@ -9,7 +9,7 @@ import json
 from .widget1 import main as widget1
 from .widget2 import main as widget2
 from .widget3 import main as widget3
-from indxyz_utils.widgetbox import main as wb
+from .indxyz_utils.indxyz_utils.widgetbox import main as wb
 
 # Add the absolute path to central-pipeline to sys.path
 central_pipeline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..', 'central-pipeline'))
