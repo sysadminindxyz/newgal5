@@ -57,7 +57,7 @@ def parse_rss_feed(url, source_name):
 # --- STREAMLIT APP ---
 def main():
     st.set_page_config(layout="wide")
-    st.title("Tending Health News")
+    st.title("Tending News Articles")
     
     rss_feeds = {
         "NYT - Health": "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",

@@ -53,14 +53,16 @@ def render_title(title):
             unsafe_allow_html=True
         )
     with header_col3: 
+
         st.markdown(
             f"""
-            <div style='text-align: left;'>
-                <img src="data:image/png;base64,{mercury_base64}" width='110'>
-            </div>
-             <a href="https://researchresultswebsite.com/" target="_blank" rel="noopener noreferrer">
-                 \n Mercury Workbench
+            """)
+        #     <div style='text-align: left;'>
+        #         <img src="data:image/png;base64,{mercury_base64}" width='110'>
+        #     </div>
+        #      <a href="https://researchresultswebsite.com/" target="_blank" rel="noopener noreferrer">
+        #          \n Mercury Workbench
 
-            """,
-            unsafe_allow_html=True
-        )
+        #     """,
+        #     unsafe_allow_html=True
+        # )

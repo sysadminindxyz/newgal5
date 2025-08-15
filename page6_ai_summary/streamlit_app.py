@@ -4,10 +4,12 @@ from pathlib import Path
 from streamlit import session_state as state
 from types import SimpleNamespace
 from streamlit.components.v1 import html
+import streamlit.components.v1 as components
 from streamlit_elements import elements, mui, html, nivo, sync
 import base64
 from streamlit_elements import dashboard
 from collections import defaultdict
+from page1.indxyz_utils.indxyz_utils.widgetbox import main as wb
 
 import feedparser
 import base64
@@ -459,7 +461,36 @@ def main():
             #     ]
             # )
 
-            
+    pdf_url="http://3.85.37.226:9000/exec_sum.pdf"
+    href = f'<a href="{pdf_url}" target="_blank" class="summary-link">Full Report</a>'
+
+    html_executive_summary = [wb(" Real-Time AI Reporting", "robot")]
+    html_executive_summary.append("""
+        </div>
+        <div style="
+            height: 250px;
+            overflow-y: auto;
+            padding: 10px 15px;
+            background-color: #f9f9f9;
+            font-family: Arial, sans-serif; /* ← Added font family */
+        ">
+    """)
+    html_executive_summary.append(f"""
+        <ul style="padding-left: 18px; margin: 0;">
+        Recent shifts in public behavior related to GLP-1 drugs (e.g., Ozempic, Wegovy, Mounjaro) are signaling a notable decline in snack food consumption across key demographics. Analysis of social media conversations, influencer commentary, and digital news articles from January–June 2025 suggests an accelerating cultural association between GLP-1 usage and "mindful eating" or reduced snacking behavior...        {href}
+        </ul>
+    </div>
+    </div>
+    """)
+    summary_widget_html="".join(html_executive_summary)
+
+    # st.markdown("""
+    #         <style>
+    #             [data-testid="stVerticalBlock"] { gap: .1rem; }
+    #             section.main > div.block-container { padding-top: 0rem; }
+    #         </style>   
+    #             """,unsafe_allow_html=True)         
+    components.html(summary_widget_html, height=370, scrolling=False)       
 
 if __name__ == "__main__":
     main()

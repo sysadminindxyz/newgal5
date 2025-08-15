@@ -107,7 +107,7 @@ def main():
             <div style="
                 height: 250px;
                 overflow-y: auto;
-                padding: 10px 15px;
+                padding: 0px 15px;
                 background-color: #f9f9f9;
                 font-family: Arial, sans-serif; /* ← Added font family */
 
@@ -115,7 +115,7 @@ def main():
         """)
     html_parts.append("""
  
-    <ol style="margin-left: -30px; margin-bottom: 20px;" type="1">
+    <ol style="margin-left: -30px; margin-bottom: 10px;" type="1">
     """)
 
     for issue, desc, source in (
@@ -123,9 +123,9 @@ def main():
         for row in data
     ):
         html_parts.append(f"""
-            <li style= margin-top: 20px;">
+            <li style= "margin-top: 10px; margin-bottom: 10px;">
                 <strong>{issue}</strong>
-                <div style="padding-left: 16px; margin-top: 0px;">
+                <div style="padding-left: 16px; margin-top: 5px; margin-bottom: 15px;">
                     <div class="desc">{desc}</div>
                     <div>
         """)
