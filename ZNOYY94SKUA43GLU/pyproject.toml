@@ -1,0 +1,19 @@
+# ================================================================
+# THIS FILE IS AUTO-GENERATED FROM `requirements.txt`.
+# 
+# WARNING: ANY CHANGES MADE HERE WILL BE OVERWRITTEN IF
+# `requirements.txt` EXISTS.
+# ================================================================
+
+[project]
+name = "streamlit-app"
+requires-python = ">= 3.11"
+version = "0.0.1"
+description = ""
+dependencies = [
+    "streamlit[snowflake]==1.49.1",
+]
+
+[tool.uv]
+# earlier versions of numba require a python version < 3.11
+constraint-dependencies = ["numba>=0.56.0"]
