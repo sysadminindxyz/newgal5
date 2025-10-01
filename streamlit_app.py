@@ -38,20 +38,20 @@ from utils.page import page_group
 
 # central_pipeline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..', 'central-pipeline'))
 # sys.path.append(central_pipeline_path)
-from indxyz_utils.indxyz_utils.render_title_new import render_title
+fr om indxyz_utils.indxyz_utils.render_title_new import render_title
 
 def main():
     st.set_page_config( layout="wide")
-
+    
     render_title(""""Snacklash"\n\n Real-Time Intelligence Dashboard"""
                  )
-
+    
     # Tight HR
     st.markdown('<hr style="margin:0px 0;">', unsafe_allow_html=True)
     #st.markdown("---")
-
+    
     page = page_group("p")
-
+    
     # Define page names and their associated callbacks
     pages = {
         "Overview": page1.page1,
@@ -60,12 +60,12 @@ def main():
         "Public Opinion": page5_surveys.page5,
         "AI Reporting": page6_ai_summary.page6b,
     }
-
+    
     # Register them with page_group
     for name, callback in pages.items():
         page.item(name, callback)
-
-
+    
+    
     selected = option_menu(
         menu_title="",
         options=list(pages.keys()),
@@ -80,10 +80,10 @@ def main():
         "nav-link-selected": {"background-color": "#433DD7"},
         }
     )
-
+    
     # Show the selected page
     pages[selected]()  # ✅ call the function directly
-
+    
     
     st.markdown("""
     <hr style="margin-top: 40px; margin-bottom: 10px;">

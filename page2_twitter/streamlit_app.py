@@ -40,20 +40,20 @@ def main():
     # <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
     # """
 
-    # tweet_embed = """
-    # <blockquote class="twitter-tweet" data-theme="dark">
-    #   <p lang="en" dir="ltr">
-    #     Mike Pompeo looks like a totally different person now.<br><br>Ozempic is wild
-    #     <a href="https://t.co/9PIgngr7UR">pic.twitter.com/9PIgngr7UR</a>
-    #   </p>
-    #   &mdash; Ken Theroux (@KenTheroux)
-    #   <a href="https://twitter.com/KenTheroux/status/1947154448637419826?ref_src=twsrc%5Etfw">
-    #     July 21, 2025
-    #   </a>
-    # </blockquote>
-    # <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-    # """
-    # html(tweet_embed01, height=700, scrolling=False)
+    tweet_embed = """
+    <blockquote class="twitter-tweet" data-theme="dark">
+      <p lang="en" dir="ltr">
+        Mike Pompeo looks like a totally different person now.<br><br>Ozempic is wild
+        <a href="https://t.co/9PIgngr7UR">pic.twitter.com/9PIgngr7UR</a>
+      </p>
+      &mdash; Ken Theroux (@KenTheroux)
+      <a href="https://twitter.com/KenTheroux/status/1947154448637419826?ref_src=twsrc%5Etfw">
+        July 21, 2025
+      </a>
+    </blockquote>
+    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    """
+    html(tweet_embed01, height=700, scrolling=False)
 
 
 
