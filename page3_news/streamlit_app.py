@@ -1,152 +1,318 @@
-    # rss_feeds = {
-    #     "NYT Health": "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",
-    #     "NYT Well Blog": "https://rss.nytimes.com/services/xml/rss/nyt/Well.xml",
-    #     "BBC Health": "http://feeds.bbci.co.uk/news/health/rss.xml",
-    #     "Fox Health": "https://www.foxnews.com/about/rss/feedburner/foxnews/health",
-    #     "CNN Health": "http://rss.cnn.com/rss/edition_health.rss",
-    #     "Body Mysteries Blog": "https://bodymysteries.com/feed/",
-    #     "Precision Nutrition Blog": "https://www.precisionnutrition.com/blog/feed", 
-    #     "My Fitness Pal Blog": "https://blog.myfitnesspal.com/feed",
-    #     "Wellness Mama Blog": "https://wellnessmama.com/feed",
-    #     "Mobi Health News": "https://www.mobihealthnews.com/feed",
-    #     "Health Partners Blog": "https://www.healthpartners.com/blog/feed/",
-    #     "Sound Health Blog": "https://soundhealthandlastingwealth.com/feed/",
-    #     "Suntrics Health Blog": "https://suntrics.com/category/health-blogs/feed/",
-    #     "Healthsoothe Blog": "https://healthsoothe.com/feed/",
-    #     "You Must Get Healthy Blog": "https://youmustgethealthy.com/feed/",
-    #     "Be Healthy Now Blog": "https://www.behealthynow.co.uk/feed/",
-    #     "Talk Health Blog": "https://www.talkhealthpartnership.com/blog/feed/",
-    #     "JS Health Blog": "https://jessicasepel.com/feed/",
-    #     "Black Health Matters Blog": "https://blackhealthmatters.com/feed/",
-    #     "Best Health Guidlines Blog": "https://besthealthguidelines.com/feed/",
-    #     "Brain Based Health Blog": "https://www.brainbasedhealth.org/rss/",
-    # }
-import streamlit as st
-from datetime import datetime
-import feedparser
+# page3_news/streamlit_app.py
+import re
+import io
+import datetime as dt
 import pandas as pd
+import streamlit as st
 
-# --- PSEUDO DATABASE FUNCTIONS ---
-def load_from_db(table_name):
-    """Replace this with real DB fetch logic."""
-    return st.session_state.get(table_name, {})
+from db import fetch_df  # uses your get_conn() under the hood
 
-def save_to_db(table_name, data):
-    """Replace this with real DB save logic."""
-    st.session_state[table_name] = data
+DEFAULT_DB = st.secrets.get("client_db", "SNACKLASH2")
+DEFAULT_SCHEMA = "RAW"
+TABLE_NAME = "RSS_ARTICLES"
+FQT = f"{DEFAULT_DB}.{DEFAULT_SCHEMA}.{TABLE_NAME}"
 
-# --- RSS FEED PARSER ---
-def parse_rss_feed(url, source_name):
-    feed = feedparser.parse(url)
-    articles = []
-    for entry in feed.entries:
-        try:
-            published_time = datetime(*entry.published_parsed[:6])
-        except:
-            published_time = datetime.now()
-        articles.append({
-            "id": entry.link,
-            "title": entry.title,
-            "link": entry.link,
-            "description": entry.summary,
-            "published_at": published_time,
-            "source": source_name
-        })
-    return articles
+PAGE_SIZE_DEFAULT = 10
+MAX_PAGE_SIZE = 100
 
-# --- STREAMLIT APP ---
+# ----- helpers -----
+def highlight_terms(text: str, terms: list[str]) -> str:
+    if not text or not terms:
+        return text or ""
+    pattern = r"(" + "|".join(re.escape(t) for t in terms if t.strip()) + r")"
+    try:
+        return re.sub(pattern, r"**\1**", text, flags=re.IGNORECASE)
+    except re.error:
+        return text
+
+@st.cache_data(ttl=120, show_spinner=False)
+def distinct_sources(start_dt, end_dt) -> list[str]:
+    where = ""
+    params = {}
+    if start_dt and end_dt:
+        where = """
+          WHERE PULLED_AT >= TO_TIMESTAMP_TZ(%(dstart)s)
+            AND PULLED_AT <  TO_TIMESTAMP_TZ(%(dend)s)
+        """
+        params = {
+            "dstart": f"{start_dt} 00:00:00 +00:00",
+            "dend":   f"{end_dt} 23:59:59 +00:00",
+        }
+
+    sql = f"""
+        SELECT DISTINCT COALESCE(SOURCE_NAME, SOURCE_FEED_TITLE, SOURCE_FEED_URL) AS SRC
+        FROM {FQT}
+        {where}
+        ORDER BY SRC
+    """
+    df = fetch_df(sql, params)
+    return [s for s in df["SRC"].dropna().astype(str).tolist() if s]
+
+
+def build_where_and_params(q, start_dt, end_dt, sources, use_published_parse=False):
+    """
+    Build WHERE clause (as a string) and params (dict).
+    - If start_dt/end_dt provided => add a date clause.
+    - If sources provided => filter by COALESCE(source fields).
+    - If q provided => ILIKE across TITLE, SUMMARY, CONTENT_TEXT, CONTENT_HTML.
+    - If use_published_parse=True => date clauses use TRY_TO_TIMESTAMP_TZ(PUBLISHED_AT_RAW),
+      otherwise use PULLED_AT.
+    """
+    params: dict = {}
+    clauses: list[str] = []
+
+    # ---- Date range (only if provided) ----
+    if start_dt and end_dt:
+        params["dstart"] = f"{start_dt} 00:00:00 +00:00"
+        params["dend"]   = f"{end_dt} 23:59:59 +00:00"
+        if use_published_parse:
+            clauses.append(
+                """
+                TRY_TO_TIMESTAMP_TZ(PUBLISHED_AT_RAW) IS NOT NULL
+                AND TRY_TO_TIMESTAMP_TZ(PUBLISHED_AT_RAW) >= TO_TIMESTAMP_TZ(%(dstart)s)
+                AND TRY_TO_TIMESTAMP_TZ(PUBLISHED_AT_RAW) <= TO_TIMESTAMP_TZ(%(dend)s)
+                """
+            )
+        else:
+            clauses.append(
+                """
+                PULLED_AT >= TO_TIMESTAMP_TZ(%(dstart)s)
+                AND PULLED_AT <= TO_TIMESTAMP_TZ(%(dend)s)
+                """
+            )
+
+    # ---- Source filter ----
+    if sources:
+        src_keys = []
+        for i, s in enumerate(sources):
+            k = f"src{i}"
+            params[k] = s.lower()
+            src_keys.append(f"%({k})s")
+        clauses.append(
+            f"""
+            LOWER(COALESCE(SOURCE_NAME, SOURCE_FEED_TITLE, SOURCE_FEED_URL))
+            IN ({", ".join(src_keys)})
+            """
+        )
+
+    # ---- Keyword search ----
+    if q and q.strip():
+        terms = [t.strip() for t in q.split() if t.strip()]
+        if terms:
+            for i, t in enumerate(terms):
+                k = f"kw{i}"
+                params[k] = f"%{t}%"
+                clauses.append(
+                    "("
+                    "TITLE ILIKE %({k})s OR "
+                    "SUMMARY ILIKE %({k})s OR "
+                    "CONTENT_TEXT ILIKE %({k})s OR "
+                    "CONTENT_HTML ILIKE %({k})s"
+                    ")".format(k=k)
+                )
+
+    where_sql = "WHERE " + " AND ".join(clauses) if clauses else ""
+    return where_sql, params
+
+
+
+def build_order_by(choice: str, use_published_parse=False) -> str:
+    if choice == "Most recent":
+        if use_published_parse:
+            return "ORDER BY TRY_TO_TIMESTAMP_TZ(PUBLISHED_AT_RAW) DESC NULLS LAST"
+        return "ORDER BY PULLED_AT DESC NULLS LAST"
+    if choice == "Oldest":
+        if use_published_parse:
+            return "ORDER BY TRY_TO_TIMESTAMP_TZ(PUBLISHED_AT_RAW) ASC NULLS LAST"
+        return "ORDER BY PULLED_AT ASC NULLS LAST"
+    if choice == "Title A→Z":
+        return "ORDER BY TITLE ASC NULLS LAST"
+    return ""
+
+# ----- UI -----
 def main():
-    st.set_page_config(layout="wide")
-    st.title("Tending News Articles")
-    
-    # rss_feeds = {
-    #     "NYT - Health": "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",
-    #     "NYT - Well Blog": "https://rss.nytimes.com/services/xml/rss/nyt/Well.xml",
-    #     "BBC - Health": "http://feeds.bbci.co.uk/news/health/rss.xml",
-    #     "Fox Health": "https://www.foxnews.com/about/rss/feedburner/foxnews/health",
-    #     "CNN Health": "http://rss.cnn.com/rss/edition_health.rss",
-    # }
+    st.title("Trending News Articles")
+    st.caption(f"Querying {FQT}")
 
-    # # --- USER CONTROLS (Compact Layout) ---
-    # feed_options = ["All Sources"] + list(rss_feeds.keys())
-    # selected = st.selectbox("🗂️ Select Feed:", feed_options)
+    with st.sidebar:
+        st.header("Filters")
 
-    # col1, col2 = st.columns([2, 3])  # Adjust width ratios as needed
+        # OFF by default — no date filter unless you tick the box
+        use_date = st.checkbox("Filter by date range", value=False)
 
-    # with col1:
-    #     keyword = st.text_input("🔍 Keyword", placeholder="Type to filter...")
+        start_dt = end_dt = None
+        if use_date:
+            import datetime as dt
+            today = dt.date.today()
+            default_start = today - dt.timedelta(days=30)  # just a UI default when enabled
+            start_dt, end_dt = st.date_input("Date range", (default_start, today), format="YYYY-MM-DD")
+            if isinstance(start_dt, tuple):  # older Streamlit compatibility
+                start_dt, end_dt = start_dt
 
-    # with col2:
-    #    date_range = st.date_input(
-    #        "📅 Date range",
-    #        [datetime.today().replace(month=1, day=1), datetime.today()],
-    #        label_visibility="visible"
-    #    )
+        query = st.text_input("Keywords", placeholder="e.g., semaglutide supply, pricing, marketing")
+        # source list (no date filter unless chosen)
+        picks = st.multiselect("Sources", options=distinct_sources(start_dt, end_dt), default=[])
 
-    # # --- LOAD DB ---
-    # favs = load_from_db("favorites")  # {article_id: True}
-    # tags = load_from_db("tags")       # {article_id: ["tag1", "tag2"]}
+        sort_by = st.selectbox("Sort by", ["Most recent", "Oldest", "Title A→Z"])
+        page_size = st.number_input("Results per page", 5, MAX_PAGE_SIZE, PAGE_SIZE_DEFAULT, step=5)
 
-    # # --- FETCH ARTICLES ---
-    # sources = [(name, url) for name, url in rss_feeds.items()] if selected == "All Sources" else [(selected, rss_feeds[selected])]
-    # raw_articles = []
-    # for name, url in sources:
-    #     raw_articles += parse_rss_feed(url, name)
+        use_pub = st.checkbox(
+            "Use published date (parse PUBLISHED_AT_RAW)",
+            value=True,
+            help="Sorts/filters by TRY_TO_TIMESTAMP_TZ(PUBLISHED_AT_RAW). Uncheck to use PULLED_AT."
+        )
 
-    # # --- DE-DUPE ---
-    # articles_dict = {a["id"]: a for a in raw_articles}
-    # articles = list(articles_dict.values())
+    #filter state
+    filter_state = {
+        "start": str(start_dt),
+        "end": str(end_dt),
+        "query": query or "",
+        "sources": tuple(picks),
+        "sort": sort_by,
+        "use_pub": use_pub,          
+        "page_size": int(page_size),
+    }
 
-    # # --- FILTER ---
-    # start, end = datetime.combine(date_range[0], datetime.min.time()), datetime.combine(date_range[1], datetime.max.time())
-    # filtered = [
-    #     a for a in articles
-    #     if start <= a["published_at"] <= end and
-    #        (keyword.lower() in a["title"].lower() or keyword.lower() in a["description"].lower())
-    # ] if keyword else [a for a in articles if start <= a["published_at"] <= end]
+    # Reset offset to 0 if filters changed
+    if st.session_state.get("news_prev_filter_state") != filter_state:
+        st.session_state.news_offset = 0
+    st.session_state.news_prev_filter_state = filter_state
 
-    # filtered = sorted(filtered, key=lambda x: x["published_at"], reverse=True)
-    # st.write(f"📌 Showing {len(filtered)} articles")
+    # Pagination state
+    if "news_offset" not in st.session_state:
+        st.session_state.news_offset = 0
 
-    # # --- DISPLAY ARTICLES ---
-    # for a in filtered:
-    #     st.markdown(f"## {a['title']}")
-    #     st.caption(f"📰 Source: {a['source']}  |  📅 {a['published_at'].strftime('%Y-%m-%d %H:%M')}")
-    #     st.write(a["description"])
-        
-    #     col1, col2, col3 = st.columns([1, 1, 2])
-        
-    #     with col1:
-    #         is_fav = favs.get(a["id"], False)
-    #         if st.button("⭐ Favorite" if not is_fav else "❌ Unfavorite", key="fav_"+a["id"]):
-    #             favs[a["id"]] = not is_fav
-    #             save_to_db("favorites", favs)
+    # Build SQL
+    where_sql, params = build_where_and_params(
+        query, start_dt, end_dt, picks, use_published_parse=use_pub
+    )
+    order_sql = build_order_by(sort_by, use_published_parse=use_pub)
 
-    #     with col2:
-    #         current_tags = tags.get(a["id"], [])
-    #         new_tag = st.text_input("Add tag", key="tag_input_"+a["id"])
-    #         if st.button("➕ Tag", key="tag_btn_"+a["id"]) and new_tag:
-    #             current_tags.append(new_tag)
-    #             tags[a["id"]] = list(set(current_tags))
-    #             save_to_db("tags", tags)
+    # Count
+    count_sql = f"SELECT COUNT(*) AS N FROM {FQT} {where_sql}"
+    total = int(fetch_df(count_sql, params).iloc[0, 0])
 
-    #     with col3:
-    #         st.write("🏷️ Tags:", ", ".join(tags.get(a["id"], [])) or "None")
+    # Page slice
+    offset = int(st.session_state.news_offset)
+    limit = int(page_size)
 
-    #     st.markdown(f"[🔗 Read more]({a['link']})")
-    #     st.markdown("---")
+    # Clamp offset to the last full page
+    if total == 0:
+        offset = 0
+    else:
+        max_offset = ((total - 1) // limit) * limit
+        if offset > max_offset:
+            offset = max_offset
+            st.session_state.news_offset = offset
 
-    # # --- EXPORT CSV ---
-    # if filtered:
-    #     df = pd.DataFrame(filtered)
-    #     df["is_favorite"] = df["id"].apply(lambda i: favs.get(i, False))
-    #     df["tags"] = df["id"].apply(lambda i: ";".join(tags.get(i, [])))
-    #     st.download_button("📥 Export Filtered Articles", df.to_csv(index=False), file_name="filtered_articles.csv")
+    can_prev = offset > 0
+    can_next = (offset + limit) < total
 
-    #     df_fav = df[df["is_favorite"]]
-    #     if not df_fav.empty:
-    #         st.download_button("📥 Export Favorites", df_fav.to_csv(index=False), file_name="favorite_articles.csv")
+    # TOP prev/next buttons 
+    col_prev, col_next, _ = st.columns([1, 1, 6])
+    with col_prev:
+        if st.button("⟵ Prev", key="news_prev_top", use_container_width=True, disabled=not can_prev):
+            st.session_state.news_offset = max(0, offset - limit)
+            st.rerun()
+    with col_next:
+        if st.button("Next ⟶", key="news_next_top", use_container_width=True, disabled=not can_next):
+            st.session_state.news_offset = offset + limit
+            st.rerun()
+
+
+    # Select list (exact columns from your schema)
+    select_cols = [
+        "PULLED_AT", "PUBLISHED_AT_RAW", "UPDATED_AT_RAW",
+        "SOURCE_NAME", "SOURCE_FEED_TITLE", "SOURCE_FEED_URL",
+        "TITLE", "SUMMARY", "CONTENT_TEXT", "CONTENT_HTML",
+        "AUTHOR_NAME", "AUTHOR_EMAIL", "AUTHOR_URI",
+        "URL", "IMAGE_URL", "CATEGORIES", "MATCHING_RULE_IDS", "MATCHING_TERMS",
+        "GUID", "GUID_IS_PERMALINK", "ENCLOSURE_URL", "ENCLOSURE_TYPE", "ENCLOSURE_LENGTH"
+    ]
+    select_list = ", ".join(select_cols)
+
+    page_sql = f"""
+        SELECT {select_list}
+        FROM {FQT}
+        {where_sql}
+        {order_sql}
+        LIMIT {limit}
+        OFFSET {offset}
+    """
+    df_page = fetch_df(page_sql, params)
+
+    # Summary
+    showing_lo = offset + 1 if total > 0 else 0
+    showing_hi = min(offset + limit, total)
+    st.markdown(f"**Showing {showing_lo}–{showing_hi} of {total}**")
+
+    if df_page.empty:
+        st.info("No results found. Try widening the date range or changing keywords.")
+        return
+
+    # Export current page
+    export_cols = [c for c in [
+        "PULLED_AT","PUBLISHED_AT_RAW","UPDATED_AT_RAW",
+        "SOURCE_NAME","SOURCE_FEED_TITLE","SOURCE_FEED_URL",
+        "TITLE","SUMMARY","CONTENT_TEXT","URL","AUTHOR_NAME","CATEGORIES"
+    ] if c in df_page.columns]
+    csv_buf = io.StringIO()
+    df_page[export_cols].to_csv(csv_buf, index=False)
+    st.download_button("Download CSV of current page",
+                       data=csv_buf.getvalue().encode("utf-8"),
+                       file_name="news_results.csv",
+                       mime="text/csv")
+
+    # Render cards
+    terms = [t for t in (query.split() if query else []) if t.strip()]
+    for _, r in df_page.iterrows():
+        with st.container(border=True):
+            title = str(r.get("TITLE") or "(No title)")
+            url = r.get("URL")
+            source = r.get("SOURCE_NAME") or r.get("SOURCE_FEED_TITLE") or r.get("SOURCE_FEED_URL") or "Unknown source"
+
+            # Date priority for display
+            disp_date = r.get("PUBLISHED_AT_RAW") or r.get("UPDATED_AT_RAW")
+            if not disp_date:
+                disp_date = r.get("PULLED_AT")
+
+            title_disp = highlight_terms(title, terms)
+            if isinstance(url, str) and url.strip():
+                st.markdown(f"### [{title_disp}]({url})")
+            else:
+                st.markdown(f"### {title_disp}")
+
+            st.caption(f"{source} • {disp_date}")
+
+            summary = (r.get("SUMMARY") or "")
+            body = (r.get("CONTENT_TEXT") or "")  # keep HTML out of the snippet by default
+            snippet = summary if len(str(summary).strip()) >= 40 else str(body)[:240]
+            snippet = highlight_terms(snippet, terms)
+            if snippet:
+                st.markdown(snippet)
+
+            extras = []
+            if r.get("AUTHOR_NAME"):
+                extras.append(f"Author: {r.get('AUTHOR_NAME')}")
+            if isinstance(url, str) and url.strip():
+                extras.append(f"[Open original]({url})")
+            if r.get("CATEGORIES"):
+                extras.append(f"Categories: {r.get('CATEGORIES')}")
+            if extras:
+                st.caption(" • ".join(extras))
+
+    # BOTTOM prev/next buttons
+    bprev, bnext = st.columns([1, 1])
+    with bprev:
+        st.button("⟵ Prev", key="news_prev_bottom", use_container_width=True, disabled=not can_prev,
+                on_click=lambda: setattr(st.session_state, "news_offset", max(0, offset - limit)))
+    with bnext:
+        st.button("Next ⟶", key="news_next_bottom", use_container_width=True, disabled=not can_next,
+                on_click=lambda: setattr(st.session_state, "news_offset", offset + limit))
+
+
+def render():
+    main()
 
 if __name__ == "__main__":
     main()
-

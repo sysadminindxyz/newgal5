@@ -8,6 +8,9 @@ import sys
 import json
 from .indxyz_utils.indxyz_utils.widgetbox import main as wb
 
+from .parse_rss import rss_as_tuples
+
+
 def get_issues(source_type, time_selection):
     return [  
         (
@@ -74,28 +77,7 @@ def get_issues(source_type, time_selection):
 
 
 def main():
-    # # Add the absolute path to central-pipeline to sys.path
-    # central_pipeline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..', 'central-pipeline'))
-    # sys.path.append(central_pipeline_path)
-    # from indxyz_utils.widgetbox import main as wb
 
-    #########ISSUES
-    # === Dummy Data Refresh (on every interaction) ===
-
-    # with open('data/issues.csv', newline='', encoding='utf-8-sig') as csvfile:
-    #     reader = csv.DictReader(csvfile)
-    #     # Optional: normalize headers and strip whitespace
-    #     reader.fieldnames = [h.strip() for h in reader.fieldnames]
-    #     data = [{k.strip(): (v.strip() if isinstance(v, str) else v) for k, v in row.items()}
-    #             for row in reader]
-
-    
-
-    # with open('data.json', 'w', encoding='utf-8') as jsonfile:
-    #     json.dump(data, jsonfile, ensure_ascii=False, indent=4)
-
-    # expected = {'issue', 'description', 'source', 'link'}
-    # assert set(reader.fieldnames) == expected, reader.fieldnames
     data=get_issues("News+Social Media", "Past Week")
 
     #print(data)

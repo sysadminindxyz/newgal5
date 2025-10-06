@@ -37,10 +37,14 @@ from utils.page import page_group
 
 
 # central_pipeline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..', 'central-pipeline'))
-# sys.path.append(central_pipeline_path)
-fr om indxyz_utils.indxyz_utils.render_title_new import render_title
+# sys.path.append(central_pipeline_path) 
+from indxyz_utils.indxyz_utils.render_title_new import render_title
 
 def main():
+
+    # st.cache_data.clear()
+    # st.cache_resource.clear()
+
     st.set_page_config( layout="wide")
     
     render_title(""""Snacklash"\n\n Real-Time Intelligence Dashboard"""

@@ -10,6 +10,8 @@ from .widget1 import main as widget1
 from .widget2 import main as widget2
 from .widget3 import main as widget3
 from .indxyz_utils.indxyz_utils.widgetbox import main as wb
+from  .debug_tweets import show_recent_tweet_urls
+
 
 # # Add the absolute path to central-pipeline to sys.path
 # central_pipeline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..', 'central-pipeline'))
@@ -20,7 +22,6 @@ from .indxyz_utils.indxyz_utils.widgetbox import main as wb
 def main(): 
 
 
-    #GET IMAGES IN BASE64
     def get_base64_image(image_path):
         with open(image_path, "rb") as f:
             data = f.read()
@@ -62,7 +63,7 @@ def main():
     news_widget_html = widget2()
 
     #SOCIAL
-    social_widget_html=widget3()
+    social_widget_html= widget3()
 
     #PUBLIC OPINION
 

@@ -1,16 +1,8 @@
 # page2_news.py
-import re, json
+import re
 import streamlit as st
 from streamlit.components.v1 import html as html_component
 from db import fetch_df  # ← relative import, per your note
-
-
-
-_ID_RE = re.compile(r"(?:status/|status%2F|i/web/status/)(\d+)")
-def _extract_id(u: str) -> str | None:
-    m = _ID_RE.search(str(u).strip())
-    return m.group(1) if m else None
-
 
 # --- helpers ---------------------------------------------------------------
 
@@ -38,55 +30,22 @@ def _get_urls(limit: int, offset: int) -> list[str]:
     """)
     return [_normalize(str(u)) for u in df["TWEET_URL"].dropna().astype(str)]
 
-
-
 def _render_embeds(urls: list[str], theme: str = "dark") -> None:
-    """
-    Programmatically embed by Tweet ID so /i/web/status/... works.
-    Fixed width, dynamic height per tweet. Shows as many as resolve.
-    """
-    # ✅ build ids from the URLs (this was missing)
-    ids = [tid for tid in (_extract_id(u) for u in urls) if tid]
-    if not ids:
-        html_component("<div style='color:#999'>No embeddable tweets.</div>", height=60)
-        return
-    containers = "\n".join(
-        f'<div id="t-{tid}" style="margin:0 0 12px 0;"></div>' for tid in ids
+    # One iframe with all blockquotes + a single widgets.js include
+    blockquotes = "\n".join(
+        [f'<blockquote class="twitter-tweet" data-theme="{theme}"><a href="{u}"></a></blockquote>'
+         for u in urls]
     )
     html = f"""
     <!doctype html><meta charset="utf-8"/>
-    <style>
-      html,body {{ margin:0; background:#fff; }}
-      #wrap      {{ width:650px; max-width:100%; margin:0 auto; }}
-      blockquote.twitter-tweet {{ margin: 0 0 12px 0 !important; }}
-    </style>
-    <div id="wrap">{containers}</div>
-    <script>
-      const IDS = {json.dumps(ids)};
-      function boot() {{
-        if (!window.twttr || !twttr.widgets || !twttr.widgets.createTweet) {{
-          return setTimeout(boot, 60);
-        }}
-        for (const id of IDS) {{
-          const el = document.getElementById("t-" + id);
-          if (!el) continue;
-          twttr.widgets.createTweet(id, el, {{
-            theme: {json.dumps(theme)},
-            conversation: "none",
-            align: "center"
-          }});
-        }}
-      }}
-      window.addEventListener("load", boot);
-    </script>
-    <script async src="https://platform.twitter.com/widgets.js"></script>
+    <div id="wrap" style="max-width: 650px; margin: 0 auto;">
+      {blockquotes}
+    </div>
+    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
     """
-    # tight height so controls sit close; tweak per if needed
-    per = 560 if theme == "dark" else 520
-    min_h, max_h = 600, 2400
-    height = max(min_h, min(120 + per * len(ids), max_h))
+    # Rough height per tweet so the whole set fits; allow iframe scrolling as needed
+    height = min(120 + 680 * max(1, len(urls)), 5000)
     html_component(html, height=height, scrolling=True)
-
 
 # --- page UI ---------------------------------------------------------------
 
@@ -169,48 +128,6 @@ def main():
         _render_embeds(urls_to_render, theme=theme)
     else:
         st.info("No tweets to show.")
-
-    mode_append = False
-    # --- bottom pager ---
-    st.divider()
-    b1, b2, b3 = st.columns([1, 1, 3])
-
-    # (Re)compute current/limits
-    max_page = max(1, (total + page_size - 1) // page_size)
-    cur_page_val = (st.session_state.news_offset // page_size) + 1
-
-    with b1:
-        disabled_prev = st.session_state.news_offset <= 0
-        if st.button("◀ Prev", key="prev_bottom", disabled=disabled_prev):
-            st.session_state.news_offset = max(0, st.session_state.news_offset - page_size)
-            if not mode_append:
-                st.session_state.news_accum_urls = []
-            st.rerun()
-
-    with b2:
-        disabled_next = (st.session_state.news_offset + page_size) >= total
-        if st.button("Next ▶", key="next_bottom", disabled=disabled_next):
-            if not mode_append:
-                st.session_state.news_accum_urls = []
-            st.session_state.news_offset = min(total, st.session_state.news_offset + page_size)
-            st.rerun()
-
-    with b3:
-        new_page = st.number_input(
-            "Jump to page",
-            min_value=1,
-            max_value=max_page,
-            value=cur_page_val,
-            step=1,
-            key="news_jump_bottom",  # <-- different key from the top control
-        )
-        if new_page != cur_page_val:
-            st.session_state.news_offset = (int(new_page) - 1) * page_size
-            if not mode_append:
-                st.session_state.news_accum_urls = []
-            st.rerun()
-
-
 
 # # For direct run (optional)
 # if __name__ == "__main__":
