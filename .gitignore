@@ -37,3 +37,8 @@ EOF
 # secrets & cache
 .streamlit/secrets.toml
 .cache/
+
+# secrets & cache
+.streamlit/secrets.toml
+.cache/
+.venv/
