@@ -33,3 +33,7 @@ htmlcov/
 node_modules/
 playwright/.cache/
 EOF
+
+# secrets & cache
+.streamlit/secrets.toml
+.cache/
