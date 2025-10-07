@@ -33,3 +33,8 @@ htmlcov/
 node_modules/
 playwright/.cache/
 EOF
+
+#old files
+*test*
+*old*
+*backup*
