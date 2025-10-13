@@ -94,12 +94,6 @@ def _window_counts(table: str, ts_col: str, where_sql: str = "", params_tuple: t
     {f"WHERE {where_sql}" if where_sql else ""}
     """
     df = fetch_df(sql, params_tuple)
-
-    # # DEBUG
-    # st.write("DEBUG SQL:", sql)
-    # st.write("DEBUG Result:", df)
-    # st.write("DEBUG Row counts:", df.iloc[0].to_dict() if not df.empty else "EMPTY")
-
     if df.empty:
         return {"day_curr":0,"day_prev":0,"week_curr":0,"week_prev":0,"d28_curr":0,"d28_prev":0}
 
@@ -116,7 +110,7 @@ def _window_counts(table: str, ts_col: str, where_sql: str = "", params_tuple: t
             except Exception:
                 return 0
 
-    return {k: _to_int_safe(row.get(k)) for k in ["DAY_CURR","DAY_PREV","WEEK_CURR","WEEK_PREV","D28_CURR","D28_PREV"]}
+    return {k: _to_int_safe(row.get(k)) for k in ["day_curr","day_prev","week_curr","week_prev","d28_curr","d28_prev"]}
 
 
 def _pct_change(curr: int, prev: int) -> str:
@@ -130,27 +124,23 @@ def summarize_windows(table: str, ts_col: str, where_sql: str = "", params: dict
     """
     params_tuple = tuple(sorted(params.items())) if params else None
     c = _window_counts(table, ts_col, where_sql, params_tuple)
-        # DEBUG
-    # st.write("DEBUG summarize_windows:", c)
-    # st.write("DEBUG Result:", df)
-    # st.write("DEBUG Row counts:", df.iloc[0].to_dict() if not df.empty else "EMPTY")
     return {
-        "day":  {"count": c["DAY_CURR"],  "delta": _pct_change(c["DAY_CURR"],  c["DAY_PREV"])},
-        "week": {"count": c["WEEK_CURR"], "delta": _pct_change(c["WEEK_CURR"], c["WEEK_PREV"])},
-        "d28":  {"count": c["D28_CURR"],  "delta": _pct_change(c["D28_CURR"],  c["D28_PREV"])},
+        "day":  {"count": c["day_curr"],  "delta": _pct_change(c["day_curr"],  c["day_prev"])},
+        "week": {"count": c["week_curr"], "delta": _pct_change(c["week_curr"], c["week_prev"])},
+        "d28":  {"count": c["d28_curr"],  "delta": _pct_change(c["d28_curr"],  c["d28_prev"])},
     }
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=120, show_spinner=False)
 def summarize_categories_for_filters(where_sql: str, params_tuple: tuple):
     """
-    Build the candidate tweet set from MART.TWEET_MEDIA using the SAME filters
-    (where_sql + params) you use for, then compute 7d / 28d
+    Build the candidate tweet set from MART.TWEET_MEDIA using filters
+    (where_sql + params) left list, then compute 7d / 28d
     category counts, their denominators, percents, and avg scores.
 
     params_tuple: tuple of (key, value) pairs for bind parameters
 
-    Returns:
+    Returns columns used by your UI:
       CATEGORY,
       TWEET_COUNT_7D, TWEET_COUNT_7D_PREV,
       PCT_OF_TWEETS_7D,
@@ -264,65 +254,5 @@ def summarize_categories_for_filters(where_sql: str, params_tuple: tuple):
     ORDER BY aggregate_by_category.TWEET_COUNT_28D DESC,
              aggregate_by_category.TWEET_COUNT_7D  DESC,
              aggregate_by_category.CATEGORY;
-    """
-    return fetch_df(sql, params_tuple)
-
-
-@st.cache_data(ttl=300, show_spinner=False)
-def summarize_daily_sentiment(where_sql: str, params_tuple: tuple):
-    """
-    Build the candidate tweet set from MART.TWEET_MEDIA using filters,
-    then compute tweet counts and score sums for rolling 24-hour intervals
-    starting from current timestamp.
-
-    params_tuple: tuple of (key, value) pairs for bind parameters
-
-    Returns:
-      INTERVAL_BUCKET (0 = current 24hrs, -1 = previous 24hrs, etc.),
-      INTERVAL_START (timestamp of interval start),
-      TWEET_COUNT (distinct tweets in interval),
-      TOTAL_SCORE (sum of all scores from TWEET_AI_CATEGORIES_FLAT)
-    """
-    sql = f"""
-    WITH candidate AS (
-      SELECT TWEET_ID, CREATED_AT
-      FROM MART.TWEET_MEDIA
-      {where_sql}
-    ),
-
-    candidate_with_bucket AS (
-      SELECT 
-        candidate.TWEET_ID,
-        candidate.CREATED_AT,
-        FLOOR(DATEDIFF('HOUR', CURRENT_TIMESTAMP(), candidate.CREATED_AT) / 24) AS interval_bucket
-      FROM candidate
-    ),
-
-    scores AS (
-      SELECT 
-        candidate_with_bucket.TWEET_ID,
-        candidate_with_bucket.interval_bucket,
-        MART.TWEET_AI_CATEGORIES_FLAT.SCORE
-      FROM candidate_with_bucket
-      LEFT JOIN MART.TWEET_AI_CATEGORIES_FLAT 
-        ON MART.TWEET_AI_CATEGORIES_FLAT.TWEET_ID = candidate_with_bucket.TWEET_ID
-    ),
-    aggregated AS (
-        select 
-            TWEET_ID,
-            interval_bucket,
-            AVG(SCORE) as SCORE,
-        FROM scores
-        GROUP BY TWEET_ID, interval_bucket
-    )
-
-    SELECT
-      interval_bucket,
-      DATEADD('HOUR', interval_bucket * 24, CURRENT_TIMESTAMP()) AS interval_start,
-      COUNT(DISTINCT TWEET_ID) AS tweet_count,
-      SUM(SCORE) AS total_score
-    FROM aggregated
-    GROUP BY interval_bucket
-    ORDER BY interval_bucket DESC;
     """
     return fetch_df(sql, params_tuple)

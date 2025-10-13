@@ -117,6 +117,7 @@ def main():
 
     #print(line_data)
 
+    print(data)
     with elements("newframe"):
 
 
@@ -213,7 +214,7 @@ def main():
                                     "#B6F399","#0096FF", "#FFE600", "#00C2FF",  "#00D084",
                                       "#3F51B5", "#8C9EFF"
                                 ],
-                                key="first_item",
+                                key="category_radar_chart",
                                 data=data,
                                 keys=["Week of July 6", "Week of July 13"],
                                 indexBy=[''],

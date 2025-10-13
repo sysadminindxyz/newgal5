@@ -34,12 +34,12 @@ def main():
     if "time_selection" not in st.session_state:
         st.session_state["time_selection"] = "Past Week"
 
-    # === Sidebar Layout ===
-    with st.sidebar:
-        st.title("Dashboard Filters")
-        # === Toggle for Source Type ===
-        source_type = st.radio("Media Types:", ["News+Social Media", "News Media", "Social Media"], horizontal=False)
-        time_options = st.radio("Timeframe:", ["Past 24 hr", "Past Week", "Past Month"], horizontal=False)
+    # # === Sidebar Layout ===
+    # with st.sidebar:
+    #     st.title("Dashboard Filters")
+    #     # === Toggle for Source Type ===
+    #     source_type = st.radio("Media Types:", ["News+Social Media", "News Media", "Social Media"], horizontal=False)
+    #     time_options = st.radio("Timeframe:", ["Past 24 hr", "Past Week", "Past Month"], horizontal=False)
 
     # === JS Listener for Updating Time Filter ===
     components.html("""

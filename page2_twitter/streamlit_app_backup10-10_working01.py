@@ -6,10 +6,6 @@ from db import fetch_df
 import datetime as dt
 from db import summarize_categories_for_filters
 import pandas as pd
-import matplotlib.pyplot as plt
-from db import summarize_daily_sentiment
-import plotly.express as px
-
 
 _ID_RE = re.compile(r"(?:status/|status%2F|i/web/status/)(\d+)")
 def _extract_id(u: str) -> str | None:
@@ -97,7 +93,7 @@ def _render_embeds(urls: list[str], theme: str = "dark") -> None:
     """
     # tight height so controls sit close; tweak per if needed
     per = 560 if theme == "dark" else 520
-    min_h, max_h = 600, 1200
+    min_h, max_h = 600, 2400
     height = max(min_h, min(120 + per * len(ids), max_h))
     html_component(html, height=height, scrolling=True)
 
@@ -116,65 +112,7 @@ def _clean_terms(kw_raw: str) -> list[str]:
             seen.add(k); out.append(t)
     return out
 
-
-def _build_category_filter_sql(categories: list[str], cat_match_mode: str, score_filter: int | None = None):
-    """
-    Returns WHERE clause fragment and params for category filtering.
-    
-    Args:
-        categories: List of category names to filter by
-        cat_match_mode: "Any (OR)" or "All (AND)"
-        score_filter: 1 (positive only), -1 (negative only), 0 (neutral), None (any score)
-    
-    Returns:
-        (where_fragment, params_dict)
-    """
-    if not categories:
-        return "", {}
-    
-    params = {}
-    
-    # Build category param placeholders
-    cat_placeholders = []
-    for i, cat in enumerate(categories):
-        key = f"cat{i}"
-        params[key] = cat
-        cat_placeholders.append(f"%({key})s")
-    
-    score_clause = f"AND cf.SCORE = {score_filter}" if score_filter is not None else ""
-    
-    if cat_match_mode.startswith("All"):
-        # AND logic: tweet must have ALL categories
-        where_fragment = f"""
-        AND EXISTS (
-            SELECT 1 
-            FROM MART.TWEET_AI_CATEGORIES_FLAT cf
-            WHERE cf.TWEET_ID = MART.TWEET_MEDIA.TWEET_ID
-              AND cf.CATEGORY IN ({','.join(cat_placeholders)})
-              {score_clause}
-            GROUP BY cf.TWEET_ID
-            HAVING COUNT(DISTINCT cf.CATEGORY) = {len(categories)}
-        )
-        """
-    else:
-        # OR logic: tweet must have ANY category
-        where_fragment = f"""
-        AND EXISTS (
-            SELECT 1 
-            FROM MART.TWEET_AI_CATEGORIES_FLAT cf
-            WHERE cf.TWEET_ID = MART.TWEET_MEDIA.TWEET_ID
-              AND cf.CATEGORY IN ({','.join(cat_placeholders)})
-              {score_clause}
-        )
-        """
-    
-    return where_fragment, params
-
-def _build_filters_sql(start_date, end_date, kw_raw: str, match_mode: str, use_date: bool,
-                       categories: list[str] = None, cat_match_mode: str = "Any (OR)", 
-                       score_filter: int | None = None):
-    # def _build_filters_sql(start_date, end_date, kw_raw: str, match_mode: str
-    #                        , use_date: bool):
+def _build_filters_sql(start_date, end_date, kw_raw: str, match_mode: str, use_date: bool):
     clauses = ["TWEET_URL IS NOT NULL"]
     params = {}
 
@@ -189,17 +127,11 @@ def _build_filters_sql(start_date, end_date, kw_raw: str, match_mode: str, use_d
         for i, t in enumerate(terms):
             k = f"kw{i}"
             params[k] = f"%{t}%"
-            bits.append(f"TWEET_TEXT ILIKE %({k})s") 
+            bits.append(f"TWEET_TEXT ILIKE %({k})s")  # ← Changed from :kw0 to %(kw0)s
         op = " OR " if str(match_mode).lower().startswith("any") else " AND "
         clauses.append("(" + op.join(bits) + ")")
 
     where_sql = " WHERE " + " AND ".join(clauses)
-
-    # Category filter (adds to WHERE)
-    cat_where, cat_params = _build_category_filter_sql(categories, cat_match_mode, score_filter)
-    where_sql += cat_where
-    params.update(cat_params)
-
     return where_sql, params
 
 def _build_order_by(sort_label: str) -> str:
@@ -222,11 +154,6 @@ def _assert_all_binds_present(sql: str, params: dict):
     missing = [k for k in needed if k not in (params or {})]
     if missing:
         raise ValueError(f"Missing binds {missing} for SQL:\n{sql}")
-
-@st.cache_data(ttl=600, show_spinner=False)
-def _all_categories() -> list[str]:
-    df = fetch_df("SELECT DISTINCT CATEGORY FROM MART.TWEET_AI_CATEGORIES_FLAT ORDER BY 1")
-    return [c for c in df["CATEGORY"].dropna().astype(str)]
 
 @st.cache_data(ttl=120, show_spinner=False)
 def _category_summary_windows_flat(
@@ -346,6 +273,7 @@ def main():
     #     st.rerun()
 
     st.set_page_config(layout="wide")
+    st.subheader("Trending Social Posts")
     theme= "dark"
     #mode_append = False # append on next vs paginate
 
@@ -367,9 +295,9 @@ def main():
         st.session_state["tweet_accum_urls"] = []
 
     with st.sidebar:
-        # if st.button("🔄 Clear All Cache"):
-        #     st.cache_data.clear()
-        #     st.rerun()
+        if st.button("🔄 Clear All Cache"):
+            st.cache_data.clear()
+            st.rerun()
 
         if st.button("Clear filters", type="secondary"):
             st.session_state["__tweet_do_clear"] = True
@@ -428,27 +356,31 @@ def main():
             key="tweet_page_size_sidebar",
         )
 
-        #CATEGORY AND SENTIMENT FILTERS
-        cat_options = _all_categories()
-        sel_categories = st.multiselect("Categories", options=cat_options, default=[], key="tweet_cats")
-        cat_match_mode = st.radio("Match categories", ["Any (OR)", "All (AND)"], index=0, horizontal=True, key="tweet_cat_mode")
-        score_filter = st.selectbox("Sentiment", [None, 1, -1, 0], format_func=lambda x: {None: "Any", 1: "Positive", -1: "Negative", 0: "Neutral"}[x], key="tweet_score")
+        mode_append = st.toggle(
+            "Append mode (infinite scroll)",
+            value=False,  # ✅ This is OK - it's a default
+            key="tweet_mode_append",
+            help="Keep loading more below instead of paginating.",
+        )
+        summaries_use_date = st.toggle(
+            "Summaries use date filter",
+            value=False,
+            help="If on, the right-side summaries use the page’s date range instead of fixed last 7/28 days."
+        )
 
-        mode_append= False
-        # mode_append = st.toggle(
-        #     "Append mode (infinite scroll)",
-        #     value=False,  # ✅ This is OK - it's a default
-        #     key="tweet_mode_append",
-        #     help="Keep loading more below instead of paginating.",
-        # )
+        ###TO DEBUG CATEGORY FILTERS
+        # # Pull category list once (cached)
+        # @st.cache_data(ttl=600, show_spinner=False)
+        # def _all_categories() -> list[str]:
+        #     df = fetch_df("SELECT DISTINCT CATEGORY FROM MART.TWEET_AI_CATEGORIES_FLAT ORDER BY 1")
+        #     return [c for c in df["CATEGORY"].dropna().astype(str)]
 
-        # summaries_use_date = st.toggle(
-        #     "Summaries use date filter",
-        #     value=False,
-        #     help="If on, the right-side summaries use the page’s date range instead of fixed last 7/28 days."
-        # )
+        # cat_options = _all_categories()
+        # sel_categories = st.multiselect("Categories", options=cat_options, default=[])
+        # cat_match_mode = st.radio("Match categories", ["Any (OR)", "All (AND)"], index=0, horizontal=True)
 
-        # In sidebar (after your existing filters):
+    ###TO DEBUG CATEGORY FILTERS
+    # cat_sig = tuple(sorted(sel_categories))  # lists aren’t hashable
 
     _sig = (
         st.session_state.get("tweet_use_date"),
@@ -473,18 +405,10 @@ def main():
 
         
     # Build WHERE + params 
-    # where_sql, params = _build_filters_sql(start_date, end_date, kw_raw, match_mode, use_date)
-    where_sql, params = _build_filters_sql(
-        start_date, end_date, kw_raw, match_mode, use_date,
-        categories=sel_categories,  # ← ADD
-        cat_match_mode=cat_match_mode,  # ← ADD
-        score_filter=score_filter  # ← ADD
-    )
-
+    where_sql, params = _build_filters_sql(start_date, end_date, kw_raw, match_mode, use_date)
     order_sql = _build_order_by(sort_label)
     params_tuple = tuple(sorted(params.items()))
     
-
     # DEBUG
     # st.write("🔍 DEBUG INFO:")
     # st.write(f"kw_raw = {repr(kw_raw)}")
@@ -502,15 +426,6 @@ def main():
     # Labels / summary
     date_label = f"{start_date} → {end_date}" if use_date else "all time"
     total_all = _total_tweet_count()
-
-    # Session state for pagination/append
-    if "tweet_offset" not in st.session_state:
-        st.session_state.tweet_offset = 0
-    if "tweet_accum_urls" not in st.session_state:
-        st.session_state.tweet_accum_urls = []
-
-
-    st.subheader("Trending Social Posts")
     st.markdown(f"<div style='margin-top:16px;color:#888'>Total in DB: {total_all:,}</div>", unsafe_allow_html=True)
     st.caption(
         f"{total:,} tweets • {date_label} • {sort_label} • "
@@ -518,8 +433,14 @@ def main():
     )
 
 
+    # Session state for pagination/append
+    if "tweet_offset" not in st.session_state:
+        st.session_state.tweet_offset = 0
+    if "tweet_accum_urls" not in st.session_state:
+        st.session_state.tweet_accum_urls = []
 
     left, right = st.columns([3, 2], gap="large")  # wider left for tweets
+
 
     with left:
 
@@ -556,7 +477,7 @@ def main():
 
         cur_urls = _get_urls_filtered(
             where_sql, order_sql, params_tuple,
-            limit=page_size, offset=st.session_state.tweet_offset
+            limit=page_size*2, offset=st.session_state.tweet_offset
         )
 
         # Append vs paginate
@@ -621,7 +542,9 @@ def main():
                 st.rerun()
  
     with right:
- 
+        title = "(Date filter on)" if summaries_use_date else "7 & 28 day"
+        st.subheader(title)
+
         try:
             df_sum = summarize_categories_for_filters(where_sql, params_tuple)
         except Exception as e:
@@ -660,359 +583,23 @@ def main():
                 "PCT_OF_TWEETS_28D":"28d %",
                 "PCT_CHANGE_28D":"28d % Δ",
             })
-
-        tmp = show[["Category","7d count"]]
-        tmp["Previous 7d"] = np.round(show["7d count"] / (1+show["7d % Δ"]/100))
-        tmp["Previous 7d"] = tmp["Previous 7d"].fillna(0).astype(int)
-        tmp["7d count"] = tmp["7d count"].fillna(0).astype(int)
-        #tmp['Category'] = tmp['Category'].replace(r' ', '\n', regex=True)
-        #tmp['Category'] = tmp['Category'].str.replace(' ', '\n', regex=False)
-        abbr = {
-            "Addiction and cravings": "ADDICTION\n& CRAVINGS",
-            "Social commentary - serious": "COMMENT - SERIOUS",
-            "Social commentary - humorous": "COMMENT - HUMOR",
-            "Effectiveness of GLP1": "EFFECTIVENESS",
-            "GLP1 Side effects": "SIDE EFFECTS",
-            "Mentions food industry": "FOOD IND.",
-            "Mentions pharma industry": "PHARMA IND.",
-            "Scientific information": "SCIENTIFIC INFO",
-            "Marketing": "MARKETING",
-        }
-
-        tmp['Category'] = tmp['Category'].map(abbr).fillna(tmp['Category'])
-
-        #print(tmp)
-        data= tmp.to_dict('records')            
-        #print(repr(tmp['Category'].iloc[0]))   # should show '\\n' inside the repr
-
-
-        from streamlit_elements import elements, mui, html, nivo, sync
-        from streamlit_elements import dashboard
-        import pandas as pd
-
-        with elements("newframe"):
-            from streamlit import session_state as state
-
-            if "p1layout" not in state:
-                p1layout = [
-                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                    #dashboard.Item("first_item", 0, 0, 2, 2),
-                    #dashboard.Item("tweet", 2, 0, 2, 2, isDraggable=True, isResizable=True),
-                    dashboard.Item("category_radar", 0, 0, 6, 4, isDraggable=True,  isResizable=True),
-                    #dashboard.Item("count_trends", 6, 0, 6, 4, isDraggable=True,  isResizable=True),
-                ]
-                state.p1layout = p1layout
-            else:
-                p1layout = state.p1layout
-
-            def handle_layout_change(updated_layout):
-                # You can save the layout in a file, or do anything you want with it.
-                # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
-                # print(updated_layout)
-                return NULL
-
-            with dashboard.Grid(p1layout, onLayoutChange=handle_layout_change):
-                mui.Paper(
-                    key="category_radar",
-                    sx={"display": "flex", "flexDirection": "column", "borderRadius": 3, "overflow": "hidden"
-                        , "height": "100%", "width":"100%"},
-                        #, "width": 500},
-                    elevation=2,
-                    children=[
-                        mui.Box(
-                            sx={
-                                "display": "flex",
-                                "alignItems": "center",
-                                "padding": "8px 16px",
-                                "borderBottom": "1px solid #eee",
-                                "backgroundColor": "#f5f5f5",
-                            },
-                            children=[
-                                mui.icon.Radar(sx={"marginRight": 1, "color": "#333"}),
-                                mui.Typography("Category Counts by Week",
-                                            sx={"flex": 1,
-                                                "fontWeight": 1000,
-                                                "color": "#333"}
-                                            ),
-
-                            ]
-                        ),
-                        mui.Box(
-                            sx={
-                                "flex": 1,             # ⬅️ allow vertical growth
-                                "minHeight": 0,        # ⬅️ prevent overflow errors
-                                "display": "flex"
-                            },
-                            children=[
-                                nivo.Radar(
-                                    colors=[
-                                       "#0096FF", "#757575", "#FFE600", "#00C2FF",  "#00D084",
-                                        "#3F51B5", "#8C9EFF"
-                                    ],
-                                    key="category_radar_chart",
-                                    data=data,
-                                    keys=["7d count", "Previous 7d"],
-                                    indexBy=['Category'],
-                                    valueFormat=">-.0f",
-                                    margin={ "top": 70, "right": 200, "bottom": 80, "left": 160 },
-                                    borderColor={ "from": "color" },
-                                    gridLabelOffset=36,
-                                    dotSize=10,
-                                    #colors="yellow_green_blue",  # ✅ set the color scheme here,
-                                    dotColor={ "from": "color" },
-                                    dotBorderColor={ "from": "color" },  # same as dot color,
-                                    dotBorderWidth=2,
-                                    motionConfig="wobbly",
-                                    scale={ 'type': 'log' },
-                                    legends=[{
-                                        "anchor": "top-left",
-                                        "direction": "column",
-                                        "translateX": -100,
-                                        "translateY": -60,
-                                        "itemWidth": 80,
-                                        "itemHeight": 20,
-                                        "itemTextColor": "#000000",
-                                        "symbolSize": 12,
-                                        "symbolShape": "circle",
-                                        "effects": [{
-                                            "on": "hover",
-                                            "style": {
-                                                "itemTextColor": "#000000"
-                                            }
-                                        }]
-                                    }],
-                                    theme={
-                                        "background": "#FDFBFB",
-                                        "textColor": "#000000",
-                                        "tooltip": {
-                                            "container": {
-                                                "background": "#0fdfdfb",
-                                                "color": "#000000",
-                                            }
-                                        }
-                                    }
-                                )
-                            ]
-                        )
-                    ]
-                )
-                # mui.Paper(
-                #     key="count_trends",
-                #     sx={"display": "flex", "flexDirection": "column", "borderRadius": 3, "overflow": "hidden"
-                #         , "height": "100%", "width":"100%"},
-                #         #, "width": 500},
-                #     elevation=2,
-                #     children=[
-                #         mui.Box(
-                #             sx={
-                #                 "display": "flex",
-                #                 "alignItems": "center",
-                #                 "padding": "8px 16px",
-                #                 "borderBottom": "1px solid #eee",
-                #                 "backgroundColor": "#f5f5f5",
-                #             },
-                #             children=[
-                #                 mui.icon.Line(sx={"marginRight": 1, "color": "#333"}),
-                #                 mui.Typography("Tweets and Engagement",
-                #                             sx={"flex": 1,
-                #                                 "fontWeight": 1000,
-                #                                 "color": "#333"}
-                #                             ),
-
-                #             ]
-                #         ),
-                #         mui.Box(
-                #             sx={
-                #                 "flex": 1,             # ⬅️ allow vertical growth
-                #                 "minHeight": 0,        # ⬅️ prevent overflow errors
-                #                 "display": "flex"
-                #             },
-                #             children=[
-                #                 nivo.Line(
-                #                     key="second_item",
-                #                     #key="my_line_chart",
-                #                     data=filtered_data,
-                #                     colors=[
-                #                         "#B6F399", "#0096FF", "#FFE600", "#00C2FF", "#00D084",
-                #                         "#3F51B5", "#8C9EFF"
-                #                     ],
-                #                     margin={"top": 50, "right": 110, "bottom": 50, "left": 60},
-                #                     xScale={"type": "point"},
-                #                     yScale={"type": "linear", "min": "auto", "max": "auto", "reverse": False},
-                #                     axisBottom={"orient": "bottom", "legend": "Month", "legendOffset": 36},
-                #                     axisLeft={"orient": "left", "legend": "Value", "legendOffset": -40},
-                #                     pointSize=10,
-                #                     pointColor={"from": "color"},
-                #                     pointBorderWidth=2,
-                #                     pointBorderColor={"from": "color"},
-                #                     useMesh=True,
-                #                     legends=[{
-                #                         "anchor": "bottom-right",
-                #                         "direction": "column",
-                #                         "translateX": 100,
-                #                         "itemWidth": 80,
-                #                         "itemHeight": 20,
-                #                         "symbolSize": 12,
-                #                         "symbolShape": "circle",
-                #                     }],
-                #                     theme={
-                #                         "background": "#242222",
-                #                         "textColor": "#B6F399",
-                #                         "tooltip": {
-                #                             "container": {
-                #                                 "background": "#0C0B0B",
-                #                                 "color": "#E7F78E",
-                #                             }
-                #                         }
-                #                     }                            )
-                #             ]
-                #         )
-                #     ]
-                # )
-                
-        try:
-            df_sent=summarize_daily_sentiment(where_sql, params_tuple)
-        except Exception as e:
-            st.error(f"Sentiment query failed: {e}")
-            df_sent=None
-        if df_sent is None or df_sum.empty:
-            st.info("No sentiment data for the current filters/time window.")
-        else:
-            show_sent = df_sent[["INTERVAL_BUCKET","TOTAL_SCORE", "TWEET_COUNT"]].rename(columns={
-                "INTERVAL_BUCKET":"Day",
-                "TOTAL_SCORE":"Score",
-                "TWEET_COUNT": "Upper Bound"
-            })
-            show_sent["Lower Bound"]= -show_sent["Upper Bound"]
-            #st.dataframe(show_sent, use_container_width=True, hide_index=True)
-            #show_sent = show_sent.sort_values("Day")
-
-
-
-
-
-            # PLOTLY CHART - SENTIMENT
-            import plotly.graph_objects as go
-            fig2 = go.Figure()
-            # Shaded area between bounds
-            fig2.add_trace(go.Scatter(
-                x=show_sent["Day"],
-                y=show_sent["Upper Bound"],
-                mode='lines',
-                line=dict(width=0),
-                showlegend=False,
-                hoverinfo='skip'
-            ))
-            fig2.add_trace(go.Scatter(
-                x=show_sent["Day"],
-                y=show_sent["Lower Bound"],
-                mode='lines',
-                line=dict(width=0),
-                fillcolor='rgba(68, 68, 68, 0.2)',
-                fill='tonexty',
-                showlegend=False,
-                hoverinfo='skip'
-            ))
-            fig2.add_trace(go.Scatter(
-                x=show_sent["Day"],
-                y=show_sent["Lower Bound"],
-                mode='lines',
-                line=dict(width=3, color =  "#757575"),
-                showlegend=False,
-                hoverinfo='skip'
-            ))
-            fig2.add_trace(go.Scatter(
-                x=show_sent["Day"],
-                y=show_sent["Upper Bound"],
-                mode='lines',
-                name='Total Tweets',
-                line=dict(width=3, color =  "#757575"),
-                marker=dict(size=0),
-                showlegend=False,
-            ))
-            # Main score line with markers on top
-            fig2.add_trace(go.Scatter(
-                x=show_sent["Day"], 
-                y=show_sent["Score"],
-                mode='lines+markers',
-                name='AI Sentiment Score',
-                line=dict(width=3, color="#0096FF"),
-                marker=dict(size=9),
-                showlegend=False,
-            ))
-            fig2.update_layout(
-                title="PopAI Senti-sense",
-                xaxis_title="Day",
-                yaxis_title="Score",
-                yaxis=dict(
-                    zeroline=True,
-                    zerolinewidth=2,
-                    zerolinecolor='black'  # or 'darkgray', '#333333', etc.
-                )
-            )
-            st.plotly_chart(fig2, use_container_width=True)
-
-
-
-
-            #### DATAFRAME 
             st.dataframe(show
                          , use_container_width=True, hide_index=True
                          )
             
-
-
-
-
-
-                   # title = "(Date filter on)" if summaries_use_date else "Categories"
-        # st.subheader(title)
-
-
             # show2=show.style.format({"7d %": "{:.1f}", "7d % Δ": "{:+.1f}", "28d %": "{:.1f}", "28d % Δ": "{:+.1f}"})
             # st.table(show2)
 
 
 
-            # fig = go.Figure()
-            # # Shaded area between bounds
-            # fig.add_trace(go.Scatter(
-            #     x=show_sent["Day"],
-            #     y=np.sqrt(show_sent["Upper Bound"]),
-            #     mode='lines',
-            #     line=dict(width=0),
-            #     showlegend=False,
-            #     hoverinfo='skip'
-            # ))
-            # fig.add_trace(go.Scatter(
-            #     x=show_sent["Day"],
-            #     y= -1 * np.sqrt(show_sent["Upper Bound"]),
-            #     mode='lines',
-            #     line=dict(width=0),
-            #     fillcolor='rgba(68, 68, 68, 0.2)',
-            #     fill='tonexty',
-            #     showlegend=False,
-            #     hoverinfo='skip'
-            # ))
-            # # Main score line with markers on top
-            # fig.add_trace(go.Scatter(
-            #     x=show_sent["Day"], 
-            #     y=np.sign(show_sent["Score"])*np.sqrt(np.abs(show_sent["Score"])),
-            #     mode='lines+markers',
-            #     name='AI Sentiment Score',
-            #     line=dict(width=3),
-            #     marker=dict(size=8),
-            #     showlegend=False,
-            # ))
-            # fig.update_layout(
-            #     title="PopAI Senti-sense",
-            #     xaxis_title="Day",
-            #     yaxis_title="Score",
-            #     yaxis=dict(
-            #         zeroline=True,
-            #         zerolinewidth=2,
-            #         zerolinecolor='black'  # or 'darkgray', '#333333', etc.
-            #     )
-            # )
-            # st.plotly_chart(fig, use_container_width=True)
 
+            # optional quick chart for 7d share
+            try:
+                st.bar_chart(show.set_index("Category")["7d % of Tweets"], use_container_width=True)
+
+            except Exception:
+                pass
+
+# # For direct run (optional)
+# if __name__ == "__main__":
+#     ()

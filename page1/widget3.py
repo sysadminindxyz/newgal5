@@ -4,14 +4,23 @@ import streamlit.components.v1 as components
 from .indxyz_utils.indxyz_utils.widgetbox_ticker import main as wb
 #from .tweets_widget_async import get_recent_tweet_images_b64_and_urls  # ← NEW
 from .cache_tweets import get_recent_tweet_images_b64_and_urls
+from db import summarize_windows
 
 
 # render items as you already do
 
 
 def main():
+    
+    tweet_counts = summarize_windows("RAW.TWITTER_TWEETS", "CREATED_AT")
+    print(tweet_counts)
+    
     html_parts = []
-    html_parts.append(wb(" Social Conversation", "twitter", ['7','58','156'], ['-100%','+27%','-4%']))
+    html_parts.append(wb(" Social Conversation", "twitter"
+                                               ,[tweet_counts["day"]["count"],tweet_counts["week"]["count"],tweet_counts["d28"]["count"]]
+                      , [tweet_counts["day"]["delta"],tweet_counts["week"]["delta"],tweet_counts["d28"]["delta"]]
+                      )
+    )
     html_parts.append("""
         </div>
       <div style="

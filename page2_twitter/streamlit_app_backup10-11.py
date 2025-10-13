@@ -116,65 +116,7 @@ def _clean_terms(kw_raw: str) -> list[str]:
             seen.add(k); out.append(t)
     return out
 
-
-def _build_category_filter_sql(categories: list[str], cat_match_mode: str, score_filter: int | None = None):
-    """
-    Returns WHERE clause fragment and params for category filtering.
-    
-    Args:
-        categories: List of category names to filter by
-        cat_match_mode: "Any (OR)" or "All (AND)"
-        score_filter: 1 (positive only), -1 (negative only), 0 (neutral), None (any score)
-    
-    Returns:
-        (where_fragment, params_dict)
-    """
-    if not categories:
-        return "", {}
-    
-    params = {}
-    
-    # Build category param placeholders
-    cat_placeholders = []
-    for i, cat in enumerate(categories):
-        key = f"cat{i}"
-        params[key] = cat
-        cat_placeholders.append(f"%({key})s")
-    
-    score_clause = f"AND cf.SCORE = {score_filter}" if score_filter is not None else ""
-    
-    if cat_match_mode.startswith("All"):
-        # AND logic: tweet must have ALL categories
-        where_fragment = f"""
-        AND EXISTS (
-            SELECT 1 
-            FROM MART.TWEET_AI_CATEGORIES_FLAT cf
-            WHERE cf.TWEET_ID = MART.TWEET_MEDIA.TWEET_ID
-              AND cf.CATEGORY IN ({','.join(cat_placeholders)})
-              {score_clause}
-            GROUP BY cf.TWEET_ID
-            HAVING COUNT(DISTINCT cf.CATEGORY) = {len(categories)}
-        )
-        """
-    else:
-        # OR logic: tweet must have ANY category
-        where_fragment = f"""
-        AND EXISTS (
-            SELECT 1 
-            FROM MART.TWEET_AI_CATEGORIES_FLAT cf
-            WHERE cf.TWEET_ID = MART.TWEET_MEDIA.TWEET_ID
-              AND cf.CATEGORY IN ({','.join(cat_placeholders)})
-              {score_clause}
-        )
-        """
-    
-    return where_fragment, params
-
-def _build_filters_sql(start_date, end_date, kw_raw: str, match_mode: str, use_date: bool,
-                       categories: list[str] = None, cat_match_mode: str = "Any (OR)", 
-                       score_filter: int | None = None):
-    # def _build_filters_sql(start_date, end_date, kw_raw: str, match_mode: str
-    #                        , use_date: bool):
+def _build_filters_sql(start_date, end_date, kw_raw: str, match_mode: str, use_date: bool):
     clauses = ["TWEET_URL IS NOT NULL"]
     params = {}
 
@@ -189,17 +131,11 @@ def _build_filters_sql(start_date, end_date, kw_raw: str, match_mode: str, use_d
         for i, t in enumerate(terms):
             k = f"kw{i}"
             params[k] = f"%{t}%"
-            bits.append(f"TWEET_TEXT ILIKE %({k})s") 
+            bits.append(f"TWEET_TEXT ILIKE %({k})s")  # ← Changed from :kw0 to %(kw0)s
         op = " OR " if str(match_mode).lower().startswith("any") else " AND "
         clauses.append("(" + op.join(bits) + ")")
 
     where_sql = " WHERE " + " AND ".join(clauses)
-
-    # Category filter (adds to WHERE)
-    cat_where, cat_params = _build_category_filter_sql(categories, cat_match_mode, score_filter)
-    where_sql += cat_where
-    params.update(cat_params)
-
     return where_sql, params
 
 def _build_order_by(sort_label: str) -> str:
@@ -222,11 +158,6 @@ def _assert_all_binds_present(sql: str, params: dict):
     missing = [k for k in needed if k not in (params or {})]
     if missing:
         raise ValueError(f"Missing binds {missing} for SQL:\n{sql}")
-
-@st.cache_data(ttl=600, show_spinner=False)
-def _all_categories() -> list[str]:
-    df = fetch_df("SELECT DISTINCT CATEGORY FROM MART.TWEET_AI_CATEGORIES_FLAT ORDER BY 1")
-    return [c for c in df["CATEGORY"].dropna().astype(str)]
 
 @st.cache_data(ttl=120, show_spinner=False)
 def _category_summary_windows_flat(
@@ -367,9 +298,9 @@ def main():
         st.session_state["tweet_accum_urls"] = []
 
     with st.sidebar:
-        # if st.button("🔄 Clear All Cache"):
-        #     st.cache_data.clear()
-        #     st.rerun()
+        if st.button("🔄 Clear All Cache"):
+            st.cache_data.clear()
+            st.rerun()
 
         if st.button("Clear filters", type="secondary"):
             st.session_state["__tweet_do_clear"] = True
@@ -428,27 +359,31 @@ def main():
             key="tweet_page_size_sidebar",
         )
 
-        #CATEGORY AND SENTIMENT FILTERS
-        cat_options = _all_categories()
-        sel_categories = st.multiselect("Categories", options=cat_options, default=[], key="tweet_cats")
-        cat_match_mode = st.radio("Match categories", ["Any (OR)", "All (AND)"], index=0, horizontal=True, key="tweet_cat_mode")
-        score_filter = st.selectbox("Sentiment", [None, 1, -1, 0], format_func=lambda x: {None: "Any", 1: "Positive", -1: "Negative", 0: "Neutral"}[x], key="tweet_score")
+        mode_append = st.toggle(
+            "Append mode (infinite scroll)",
+            value=False,  # ✅ This is OK - it's a default
+            key="tweet_mode_append",
+            help="Keep loading more below instead of paginating.",
+        )
+        summaries_use_date = st.toggle(
+            "Summaries use date filter",
+            value=False,
+            help="If on, the right-side summaries use the page’s date range instead of fixed last 7/28 days."
+        )
 
-        mode_append= False
-        # mode_append = st.toggle(
-        #     "Append mode (infinite scroll)",
-        #     value=False,  # ✅ This is OK - it's a default
-        #     key="tweet_mode_append",
-        #     help="Keep loading more below instead of paginating.",
-        # )
+        ###TO DEBUG CATEGORY FILTERS
+        # # Pull category list once (cached)
+        # @st.cache_data(ttl=600, show_spinner=False)
+        # def _all_categories() -> list[str]:
+        #     df = fetch_df("SELECT DISTINCT CATEGORY FROM MART.TWEET_AI_CATEGORIES_FLAT ORDER BY 1")
+        #     return [c for c in df["CATEGORY"].dropna().astype(str)]
 
-        # summaries_use_date = st.toggle(
-        #     "Summaries use date filter",
-        #     value=False,
-        #     help="If on, the right-side summaries use the page’s date range instead of fixed last 7/28 days."
-        # )
+        # cat_options = _all_categories()
+        # sel_categories = st.multiselect("Categories", options=cat_options, default=[])
+        # cat_match_mode = st.radio("Match categories", ["Any (OR)", "All (AND)"], index=0, horizontal=True)
 
-        # In sidebar (after your existing filters):
+    ###TO DEBUG CATEGORY FILTERS
+    # cat_sig = tuple(sorted(sel_categories))  # lists aren’t hashable
 
     _sig = (
         st.session_state.get("tweet_use_date"),
@@ -473,18 +408,10 @@ def main():
 
         
     # Build WHERE + params 
-    # where_sql, params = _build_filters_sql(start_date, end_date, kw_raw, match_mode, use_date)
-    where_sql, params = _build_filters_sql(
-        start_date, end_date, kw_raw, match_mode, use_date,
-        categories=sel_categories,  # ← ADD
-        cat_match_mode=cat_match_mode,  # ← ADD
-        score_filter=score_filter  # ← ADD
-    )
-
+    where_sql, params = _build_filters_sql(start_date, end_date, kw_raw, match_mode, use_date)
     order_sql = _build_order_by(sort_label)
     params_tuple = tuple(sorted(params.items()))
     
-
     # DEBUG
     # st.write("🔍 DEBUG INFO:")
     # st.write(f"kw_raw = {repr(kw_raw)}")
@@ -556,7 +483,7 @@ def main():
 
         cur_urls = _get_urls_filtered(
             where_sql, order_sql, params_tuple,
-            limit=page_size, offset=st.session_state.tweet_offset
+            limit=page_size*2, offset=st.session_state.tweet_offset
         )
 
         # Append vs paginate
@@ -666,25 +593,15 @@ def main():
         tmp["Previous 7d"] = tmp["Previous 7d"].fillna(0).astype(int)
         tmp["7d count"] = tmp["7d count"].fillna(0).astype(int)
         #tmp['Category'] = tmp['Category'].replace(r' ', '\n', regex=True)
-        #tmp['Category'] = tmp['Category'].str.replace(' ', '\n', regex=False)
-        abbr = {
-            "Addiction and cravings": "ADDICTION\n& CRAVINGS",
-            "Social commentary - serious": "COMMENT - SERIOUS",
-            "Social commentary - humorous": "COMMENT - HUMOR",
-            "Effectiveness of GLP1": "EFFECTIVENESS",
-            "GLP1 Side effects": "SIDE EFFECTS",
-            "Mentions food industry": "FOOD IND.",
-            "Mentions pharma industry": "PHARMA IND.",
-            "Scientific information": "SCIENTIFIC INFO",
-            "Marketing": "MARKETING",
-        }
+        tmp['Category'] = tmp['Category'].str.replace(' ', '\n', regex=False)
 
-        tmp['Category'] = tmp['Category'].map(abbr).fillna(tmp['Category'])
-
-        #print(tmp)
+        print(tmp)
         data= tmp.to_dict('records')            
-        #print(repr(tmp['Category'].iloc[0]))   # should show '\\n' inside the repr
+        print(repr(tmp['Category'].iloc[0]))   # should show '\\n' inside the repr
 
+        #print(data)
+
+        #print(data)
 
         from streamlit_elements import elements, mui, html, nivo, sync
         from streamlit_elements import dashboard
@@ -708,8 +625,7 @@ def main():
             def handle_layout_change(updated_layout):
                 # You can save the layout in a file, or do anything you want with it.
                 # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
-                # print(updated_layout)
-                return NULL
+                print(updated_layout)
 
             with dashboard.Grid(p1layout, onLayoutChange=handle_layout_change):
                 mui.Paper(
@@ -891,7 +807,7 @@ def main():
 
 
 
-            # PLOTLY CHART - SENTIMENT
+            # Create interactive plotly chart
             import plotly.graph_objects as go
             fig2 = go.Figure()
             # Shaded area between bounds
@@ -913,23 +829,6 @@ def main():
                 showlegend=False,
                 hoverinfo='skip'
             ))
-            fig2.add_trace(go.Scatter(
-                x=show_sent["Day"],
-                y=show_sent["Lower Bound"],
-                mode='lines',
-                line=dict(width=3, color =  "#757575"),
-                showlegend=False,
-                hoverinfo='skip'
-            ))
-            fig2.add_trace(go.Scatter(
-                x=show_sent["Day"],
-                y=show_sent["Upper Bound"],
-                mode='lines',
-                name='Total Tweets',
-                line=dict(width=3, color =  "#757575"),
-                marker=dict(size=0),
-                showlegend=False,
-            ))
             # Main score line with markers on top
             fig2.add_trace(go.Scatter(
                 x=show_sent["Day"], 
@@ -937,7 +836,7 @@ def main():
                 mode='lines+markers',
                 name='AI Sentiment Score',
                 line=dict(width=3, color="#0096FF"),
-                marker=dict(size=9),
+                marker=dict(size=8),
                 showlegend=False,
             ))
             fig2.update_layout(
@@ -953,9 +852,6 @@ def main():
             st.plotly_chart(fig2, use_container_width=True)
 
 
-
-
-            #### DATAFRAME 
             st.dataframe(show
                          , use_container_width=True, hide_index=True
                          )

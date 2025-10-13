@@ -2,6 +2,8 @@ import os, sys, pandas as pd
 import streamlit as st
 import csv
 import json
+from db import summarize_windows
+
 # paths
 # central_pipeline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'central-pipeline'))
 # sys.path.append(central_pipeline_path)
@@ -12,21 +14,27 @@ from .parse_rss import rss_as_tuples
 
 
 # === Mock Function to Return News (no filtering yet) ===
-def get_news(source_type, time_selection):
-    return(rss_as_tuples(limit=100))
+# def get_news(source_type, time_selection):
+#     return(rss_as_tuples(limit=100))
 
 def build_html(items):
     return "<ul>" + "\n".join(items) + "</ul>"
 
 def main():
   #NEWS
-    # === Dummy Data Refresh (on every interaction) ===
-    news = get_news("", "")
-    #print(news)
 
+    # === Dummy Data Refresh (on every interaction) ===
+    # news = get_news("", "")
+    news= rss_as_tuples(limit=100)
+    rss_counts = summarize_windows("RAW.RSS_ARTICLES", "PULLED_AT")
+    #print(rss_counts)
+
+    #print(rss_counts)
     # === News Widget HTML ===
     html_parts_news  = [wb(" News Media", "newspaper" 
-                      ,['3','12','42'], ['+300%','+20%','-25%'])]
+                      ,[rss_counts["day"]["count"],rss_counts["week"]["count"],rss_counts["d28"]["count"]]
+                      , [rss_counts["day"]["delta"],rss_counts["week"]["delta"],rss_counts["d28"]["delta"]])
+                      ]
     html_parts_news.append("""
         </div>
         <div style="
@@ -39,6 +47,10 @@ def main():
         ">
     """)
 
+    html_parts_news.append("""
+ 
+    <ol style="margin-left: -30px; margin-bottom: 10px;" type="1">
+    """)
 
     for title, desc, sources in news:
         html_parts_news.append(f"""
