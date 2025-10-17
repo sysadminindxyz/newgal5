@@ -1,9 +1,10 @@
 
 import base64
 import streamlit as st
+import streamlit.components.v1 as components
 
 
-def render_title(title):
+def render_title(title, subtitle=""):
 
     #GET IMAGES IN BASE64
     def get_base64_image(image_path):
@@ -20,9 +21,16 @@ def render_title(title):
 
     with header_col1:
         st.markdown(
-            f"""
-            <div style='text-align: right;'>
-                <img src="data:image/png;base64,{popai_base64}" width='180'>
+            f""" <div style='text-align: left;
+                            font-family:Avenir Next LT Pro Light, sans-serif;
+                            font-size:14px;   
+                            font-weight: bold;
+                            margin-top: -40px;
+                            font-color:#1396cc;
+                            '>
+                Powered by:</div>
+            <div style='text-align: left;'>
+                <img src="data:image/png;base64,{popai_base64}" width='80'>
             </div>
             """,
             unsafe_allow_html=True
@@ -35,16 +43,16 @@ def render_title(title):
                 #display: inline-block;
                 justify-content: space-between;
                 align-items: center;        
-                background-color:#5050C6;
-                padding: 5px 5px;
+                background-color:#FFFFFF;
+                #padding: -50px 5px;
                 #-webkit-text-stroke: 1px #6E3F18;
                 #border: 2px solid #627C7E;
-                border-radius: 10px;
-                #margin-top: 10px;
-                font-family:Helvetica;
-                font-size:32px;
-                color:#FFF8ED;
-                font-weight: bold;
+                #border-radius: -10px;
+                margin-top: -50px;
+                font-family:Avenir Next LT Pro Light, sans-serif;
+                font-size:45px;
+                color:#1396cc;
+                #font-weight: bold;
                 text-align: center; 
                 #max-width: 100%;
                 #word-wrap: break-word;
@@ -52,17 +60,41 @@ def render_title(title):
             """,
             unsafe_allow_html=True
         )
-    with header_col3: 
-
         st.markdown(
             f"""
-            """)
-        #     <div style='text-align: left;'>
-        #         <img src="data:image/png;base64,{mercury_base64}" width='110'>
-        #     </div>
-        #      <a href="https://researchresultswebsite.com/" target="_blank" rel="noopener noreferrer">
-        #          \n Mercury Workbench
+            <div style='
+                #display: inline-block;
+                justify-content: space-between;
+                align-items: center;        
+                background-color:#FFFFFF;
+                margin-bottom: 20px;
+                font-family:Aptos Mono, sans-serif;
+                font-size:20px;
+                font-weight: bold;
+                color:#302929;
+                text-align: center; 
+                #max-width: 100%;
+                #word-wrap: break-word;
+            '>{subtitle}</div>
+            """,
+            unsafe_allow_html=True
+        )
 
-        #     """,
-        #     unsafe_allow_html=True
-        # )
+    with header_col3: 
+
+        html_parts= []
+        # html_parts.append(subtitle)
+        # components.html(subtitle)
+
+        # st.markdown(
+        #     f"""
+        #     """)
+        # #     <div style='text-align: left;'>
+        # #         <img src="data:image/png;base64,{mercury_base64}" width='110'>
+        # #     </div>
+        # #      <a href="https://researchresultswebsite.com/" target="_blank" rel="noopener noreferrer">
+        # #          \n Mercury Workbench
+
+        # #     """,
+        # #     unsafe_allow_html=True
+        # # )

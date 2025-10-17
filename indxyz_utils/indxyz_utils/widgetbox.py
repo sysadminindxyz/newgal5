@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-
+ 
 def main(title, icon_name):
     
     icon_link=f'<i class="bi bi-{icon_name}"></i>'
@@ -11,16 +11,13 @@ def main(title, icon_name):
 
         <style>
         .desc {
-            color: #666;
+            color: #333;
             font-size: 14px;
-            margin-left: -15px;
-            margin-bottom: 4px;
         }
         .source-link {
-            color: #1396cc;
+            color: #007acc;
             text-decoration: none;
-            margin-left: -15px;
-            font-size: 14px;
+            margin-right: 10px;
         }
         .source-link:hover {
             color: #005b99;
@@ -28,22 +25,22 @@ def main(title, icon_name):
         }
         </style>
         <div style="
-            max-width: 1200px;
+            max-width: 800px;
             margin-left: 0;
-            border: 1px solid #f6f4f4;
+            border: 2px solid #bbb;
             border-radius: 0px;
             overflow: hidden;
-            background-color: #ffffff;
-            box-shadow: 1px 1px 9px rgba(0,0,0,0.2);
+            background-color: #23324a;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
         ">
             <div style="
                 background-color: #23324a;
-                padding: 13px 15px;
-                font-family: Arial, sans-serif; /* ← Added font family */
-                #font-weight: bold;
-                font-size: 18px;
-                border-bottom: 1px solid #f6f4f4;
-                color: #ffffff;
+                padding: 18px 15px;
+                font-family: Arial, sans-serif; 
+                font-weight: bold;
+                font-size: 5px;
+                border-bottom: 1px solid #bbb;
+                color: #333;
             ">
         """,
         icon_link,

@@ -87,9 +87,9 @@ def main():
     html_parts.append("""
             </div>
             <div style="
-                height: 250px;
+                height: 300px;
                 overflow-y: auto;
-                padding: 0px 15px;
+                padding: 00px 15px;
                 background-color: #f9f9f9;
                 font-family: Arial, sans-serif; /* ← Added font family */
 

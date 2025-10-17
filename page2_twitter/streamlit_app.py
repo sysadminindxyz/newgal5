@@ -519,7 +519,7 @@ def main():
 
 
 
-    left, right = st.columns([3, 2], gap="large")  # wider left for tweets
+    left, right = st.columns([2,3], gap="large")  # wider left for tweets
 
     with left:
 

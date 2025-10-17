@@ -1,3 +1,4 @@
+#page1/streamlit_app.py
 import streamlit as st
 import streamlit.components.v1 as components
 import csv
@@ -130,7 +131,7 @@ def main():
 
     #href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="Executive_Summary.pdf" class="summary-link">Full Report</a>'
     pdf_url="http://3.85.37.226:9000/exec_sum.pdf"
-    href = f'<a href="{pdf_url}" target="_blank" class="summary-link">Full Report</a>'
+    href = f'<a href="{pdf_url}" target="_blank" class="summary-link", color="#1396cc">Full Report</a>'
 
     html_executive_summary = [wb(" Real-Time AI Reporting", "robot")]
     html_executive_summary.append("""
@@ -138,7 +139,7 @@ def main():
         <div style="
             height: 250px;
             overflow-y: auto;
-            padding: 10px 15px;
+            padding: 18px 15px;
             background-color: #f9f9f9;
             font-family: Arial, sans-serif; /* ← Added font family */
         ">
@@ -154,8 +155,8 @@ def main():
 
     st.markdown("""
             <style>
-                [data-testid="stVerticalBlock"] { gap: .1rem; }
-                section.main > div.block-container { padding-top: 0rem; }
+                [data-testid="stVerticalBlock"] { gap: 0rem; }
+                section.main > div.block-container { padding-top: 0px; }
             </style>
         """, unsafe_allow_html=True)
     row1 = st.columns(3)
@@ -165,15 +166,15 @@ def main():
 
     # === Layout ROW 1===
     with st.container():
-        #st.markdown("<div style='margin-bottom: -25px'>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom: 0px; margin-top: 0px'>", unsafe_allow_html=True)
 
         with row1[0]:
-            components.html(issue_widget_html, height=370, scrolling=False)
+            components.html(issue_widget_html, height=365, scrolling=False)
         with row1[1]:
-            components.html(news_widget_html, height=370, scrolling=False)
+            components.html(news_widget_html, height=365, scrolling=False)
 
         with row1[2]:
-            components.html(social_widget_html, height=370, scrolling=False)
+            components.html(social_widget_html, height=365, scrolling=False)
 
 
 

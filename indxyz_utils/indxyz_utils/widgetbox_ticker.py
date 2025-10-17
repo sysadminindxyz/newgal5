@@ -18,15 +18,11 @@ def main(title, icon_name, counts, changes):
         .desc {
             color: #666;
             font-size: 14px;
-            margin-left: -15px;
-            margin-bottom: 4px;
-
         }
         .source-link {
-            color: #1396cc;
+            color: #007acc;
             text-decoration: none;
-            margin-left: -15px;
-            font-size: 14px;
+            margin-right: 10px;
         }
         .source-link:hover {
             color: #005b99;
@@ -34,21 +30,20 @@ def main(title, icon_name, counts, changes):
         }
         </style>
         <div style="
-            max-width: 1200px;
+            max-width: 800px;
             margin-left: 0;
-            border: 1px solid #f6f4f4;
-            border-radius: 0px;
+            border: 2px solid #bbb;
+            border-radius: 8px;
             overflow: hidden;
             background-color: #ffffff;
-            box-shadow: 1px 1px 9px rgba(0,0,0,0.2);
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
         ">
         <div style="
-            background-color: #a0e2ff;
+            background-color: #e0e0e0;
             padding: 5px 15px;
-            #font-weight: bold;
-            font-family: Arial, sans-serif; /* ← Added font family */
+            font-weight: bold;
             font-size: 18px;
-            #border-bottom: 1px solid #f6f4f4;
+            border-bottom: 1px solid #bbb;
             color: #333;
             display: flex; 
             justify-content: space-between; 
@@ -62,22 +57,22 @@ def main(title, icon_name, counts, changes):
                 <table style="
                     border-collapse: collapse;
                     font-family: Arial, sans-serif;
-                    font-size: 7pt;
+                    font-size: 8pt;
                 ">
                 <tr>
-                    <th style="text-align: left; padding: 1px 10px;"></th>
+                    <th style="text-align: left; padding: 1px 4px;"></th>
                     <th style="text-align: center; padding: 1px 4px;">Day</th>
                     <th style="text-align: center; padding: 1px 4px;">Week</th>
-                    <th style="text-align: center; padding: 1px 4px;">28d</th>
+                    <th style="text-align: center; padding: 1px 4px;">Month</th>
                 </tr>
                 <tr>
-                    <td style="text-align: left; padding: 1px 10px;">N</td>
+                    <td style="text-align: left; padding: 1px 4px;">Count</td>
                     <td style="text-align: center; padding: 1px 4px;">{counts[0]}</td>
                     <td style="text-align: center; padding: 1px 4px;">{counts[1]}</td>
                     <td style="text-align: center; padding: 1px 4px;">{counts[2]}</td>
                 </tr>
                 <tr>
-                    <td style="text-align: left; padding: 1px 10px;">&#916</td>
+                    <td style="text-align: left; padding: 1px 4px;">Change</td>
                     <td style="color:{colors[0]}; text-align: center; padding: 1px 4px;">{changes[0]}</td>
                     <td style="color:{colors[1]}; text-align: center; padding: 1px 4px;">{changes[1]}</td>
                     <td style="color:{colors[2]}; text-align: center; padding: 1px 4px;">{changes[2]}</td>

@@ -47,11 +47,13 @@ def main():
 
     st.set_page_config( layout="wide")
     
-    render_title(""""Snacklash"\n\n Real-Time Intelligence Dashboard"""
+    render_title("""Snacklash""", """Real-Time Intelligence Dashboard"""
                  )
+    #st.title("""Real-Time Intelligence Dashboard""")
+
     
     # Tight HR
-    st.markdown('<hr style="margin:0px 0;">', unsafe_allow_html=True)
+    # st.markdown('<hr style="margin:0px 0;">', unsafe_allow_html=True)
     #st.markdown("---")
     
     page = page_group("p")
@@ -78,20 +80,21 @@ def main():
         default_index=0,
         orientation="horizontal",
         styles={
-        #"container": {"padding": "0!important", "background-color": "#fafafa"},
+        "container": {"margin": "0px", "padding": "0!important"} ,
         "icon": {"color": "#84C36B", "font-size": "15px"}, 
-        "nav-link": {"font-size": "15px", "text-align": "left", "margin":"0px",     "line-height": "1.2", "--hover-color": "#eee"},
-        "nav-link-selected": {"background-color": "#433DD7"},
+        "nav-link": {"font-size": "15px", "text-align": "center", "margin":"0px",
+                     "line-height": "1.2", "--hover-color": "#1396cc"},
+        "nav-link-selected": {"background-color": "#1396cc"},
         }
     )
     
     # Show the selected page
-    pages[selected]()  # ✅ call the function directly
+    pages[selected]()  
     
     
     st.markdown("""
-    <hr style="margin-top: 40px; margin-bottom: 10px;">
-    <div style="text-align: center; color: #666;">
+        <hr style="margin-top: 0px; margin-bottom: 0px;">
+        <div style="text-align: center; color: #666;">
         Questions? More Information? \n\n Contact: <a href="mailto:info@indxyz.com" style="color: #007acc; text-decoration: none;">info@indxyz.com</a>
     </div>
     """, unsafe_allow_html=True)

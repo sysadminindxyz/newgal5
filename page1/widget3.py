@@ -17,14 +17,15 @@ def main():
     
     html_parts = []
     html_parts.append(wb(" Social Conversation", "twitter"
-                                               ,[tweet_counts["day"]["count"],tweet_counts["week"]["count"],tweet_counts["d28"]["count"]]
+                      , [tweet_counts["day"]["count"],tweet_counts["week"]["count"],tweet_counts["d28"]["count"]]
                       , [tweet_counts["day"]["delta"],tweet_counts["week"]["delta"],tweet_counts["d28"]["delta"]]
                       )
     )
     html_parts.append("""
         </div>
       <div style="
-          height: 250px; overflow-y: auto; padding: 10px 15px;
+          height: 285px; 
+          overflow-y: auto; padding: 10px 50px;
           background-color: #f9f9f9; font-family: Arial, sans-serif; border-radius: 12px;">
     """)
 
